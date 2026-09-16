@@ -1,6 +1,12 @@
 <?php
 $page_title = 'Create Account | VPMS';
 $body_class = 'auth-center';
+
+require 'config/db.php';
+
+// the five roles people can sign themselves up as (not System Administrator)
+$roles = $pdo->query('SELECT role_id, name, description FROM role WHERE role_id <= 5 ORDER BY role_id')->fetchAll();
+
 include 'includes/auth-header.php';
 ?>
 
@@ -23,45 +29,19 @@ include 'includes/auth-header.php';
 
   <form action="register-step2.php" method="get">
 
-    <label class="choice">
-      <input type="radio" name="role" value="Volunteer" checked>
-      <span class="choice-box d-block">
-        <span class="choice-title">Volunteer</span>
-        <span class="choice-note">Browse and apply for community opportunities</span>
-      </span>
-    </label>
-
-    <label class="choice">
-      <input type="radio" name="role" value="NGO Coordinator">
-      <span class="choice-box d-block">
-        <span class="choice-title">NGO Coordinator</span>
-        <span class="choice-note">Manage projects and recruit volunteers</span>
-      </span>
-    </label>
-
-    <label class="choice">
-      <input type="radio" name="role" value="Corporate CSR Manager">
-      <span class="choice-box d-block">
-        <span class="choice-title">Corporate CSR Manager</span>
-        <span class="choice-note">Lead employee volunteering programs</span>
-      </span>
-    </label>
-
-    <label class="choice">
-      <input type="radio" name="role" value="Community Field Officer">
-      <span class="choice-box d-block">
-        <span class="choice-title">Community Field Officer</span>
-        <span class="choice-note">Validate attendance and verify hours</span>
-      </span>
-    </label>
-
-    <label class="choice">
-      <input type="radio" name="role" value="Sponsor / Donor">
-      <span class="choice-box d-block">
-        <span class="choice-title">Sponsor / Donor</span>
-        <span class="choice-note">Track funded projects and outcomes</span>
-      </span>
-    </label>
+    <?php
+    // the values are role_id numbers from the role table
+    foreach ($roles as $role) {
+    ?>
+      <label class="choice">
+        <input type="radio" name="role" value="<?php echo $role['role_id']; ?>"
+               <?php if ($role['role_id'] == 1) echo 'checked'; ?>>
+        <span class="choice-box d-block">
+          <span class="choice-title"><?php echo $role['name']; ?></span>
+          <span class="choice-note"><?php echo $role['description']; ?></span>
+        </span>
+      </label>
+    <?php } ?>
 
     <button class="btn-v btn-green btn-block btn-lg-v mt-3" type="submit">Continue &rarr;</button>
   </form>

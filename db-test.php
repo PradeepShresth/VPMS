@@ -48,18 +48,41 @@ include 'includes/auth-header.php';
 
   </div>
 
-  <?php if (count($tables) == 0) { ?>
+  <p class="section-label">Tables in this database</p>
+  <div class="card-v card-v-pad mb-4">
+    <?php foreach ($tables as $table) { ?>
+      <span class="chip chip-mono me-2 mb-2"><?php echo $table; ?></span>
+    <?php } ?>
+  </div>
+
+  <?php
+  // show whoever has registered so far
+  $people = $pdo->query(
+      'SELECT u.full_name, u.email, u.status, r.name AS role
+       FROM `user` u
+       JOIN role r ON r.role_id = u.role_id
+       ORDER BY u.user_id DESC'
+  )->fetchAll();
+  ?>
+
+  <p class="section-label">Registered accounts (<?php echo count($people); ?>)</p>
+
+  <?php if (count($people) == 0) { ?>
     <div class="notice mb-4">
-      <p class="notice-title">No tables yet</p>
-      <p class="notice-text">
-        The database is empty, which is expected at this stage. Tables come next.
-      </p>
+      <p class="notice-title">Nobody registered yet</p>
+      <p class="notice-text">Sign up through the registration form and the account will appear here.</p>
     </div>
   <?php } else { ?>
-    <p class="section-label">Tables in this database</p>
-    <div class="card-v card-v-pad mb-4">
-      <?php foreach ($tables as $table) { ?>
-        <span class="chip chip-mono me-2 mb-2"><?php echo $table; ?></span>
+    <div class="card-v mb-4">
+      <?php foreach ($people as $person) { ?>
+        <div class="list-row">
+          <span class="avatar-circle"><?php echo strtoupper(substr($person['full_name'], 0, 1)); ?></span>
+          <span class="flex-grow-1 min-w-0">
+            <span class="row-title d-block"><?php echo htmlspecialchars($person['full_name']); ?></span>
+            <span class="row-meta d-block"><?php echo htmlspecialchars($person['email']); ?> · <?php echo $person['role']; ?></span>
+          </span>
+          <span class="badge-v badge-pending"><?php echo $person['status']; ?></span>
+        </div>
       <?php } ?>
     </div>
   <?php } ?>

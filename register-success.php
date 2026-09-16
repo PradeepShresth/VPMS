@@ -9,7 +9,11 @@ include 'includes/auth-header.php';
     <span class="success-icon"><i class="bi bi-check-lg"></i></span>
     <h1 class="success-title">Registration submitted</h1>
     <p class="success-text">
-      Your account request is under review. You will receive a confirmation email within
+      <?php if (isset($_GET['name'])) { ?>
+        Thanks, <strong style="color:#16303c"><?php echo htmlspecialchars($_GET['name']); ?></strong> —
+        your account has been created.
+      <?php } ?>
+      It is under review, and you will receive a confirmation email within
       1–2 business days once approved by the System Administrator.
     </p>
     <a class="btn-v btn-green" href="login.php">Go to Sign In</a>
