@@ -1,6 +1,9 @@
 <?php
 $page_title = 'Dashboard | VPMS';
 $active = 'dashboard';
+
+require 'includes/auth.php';
+
 include 'includes/app-header.php';
 ?>
 

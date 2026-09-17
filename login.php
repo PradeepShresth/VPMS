@@ -1,6 +1,54 @@
 <?php
 $page_title = 'Sign In | VPMS';
 $body_class = '';
+
+require 'config/db.php';
+
+session_start();
+
+$error = '';
+$email = '';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+
+    $email = trim($_POST['email']);
+    $password = $_POST['password'];
+
+    if ($email == '' || $password == '') {
+        $error = 'Enter your email address and password.';
+    } else {
+
+        $find = $pdo->prepare(
+            'SELECT u.user_id, u.full_name, u.password_hash, u.status, r.name AS role_name
+             FROM `user` u
+             JOIN role r ON r.role_id = u.role_id
+             WHERE u.email = ?'
+        );
+        $find->execute(array($email));
+        $account = $find->fetch(PDO::FETCH_ASSOC);
+
+        if ($account == false || password_verify($password, $account['password_hash']) == false) {
+            // same message either way, so nobody can guess which emails exist
+            $error = 'Those details do not match an account.';
+
+        } elseif ($account['status'] == 'pending') {
+            $error = 'Your account is still waiting for administrator approval.';
+
+        } elseif ($account['status'] == 'suspended') {
+            $error = 'This account has been suspended. Contact the administrator.';
+
+        } else {
+            // signed in - remember who they are and send them to the dashboard
+            $_SESSION['user_id'] = $account['user_id'];
+            $_SESSION['full_name'] = $account['full_name'];
+            $_SESSION['role_name'] = $account['role_name'];
+
+            header('Location: dashboard.php');
+            exit;
+        }
+    }
+}
+
 include 'includes/auth-header.php';
 ?>
 
@@ -40,11 +88,18 @@ include 'includes/auth-header.php';
       <h2 class="auth-title">Welcome back</h2>
       <p class="auth-sub">Sign in to your VPMS account</p>
 
-      <form action="dashboard.php" method="get">
+      <?php if ($error != '') { ?>
+        <div class="notice mb-4" style="border-left-color:#c8504b;background:#fdf3f2">
+          <p class="notice-text"><?php echo $error; ?></p>
+        </div>
+      <?php } ?>
+
+      <form action="login.php" method="post">
 
         <div class="field">
           <label class="field-label" for="email">Email address</label>
-          <input class="input-v" type="email" id="email" name="email" placeholder="you@organisation.org">
+          <input class="input-v" type="email" id="email" name="email" placeholder="you@organisation.org"
+                 value="<?php echo htmlspecialchars($email); ?>">
         </div>
 
         <div class="field mb-4">

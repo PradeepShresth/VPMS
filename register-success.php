@@ -11,7 +11,12 @@ include 'includes/auth-header.php';
     <p class="success-text">
       <?php if (isset($_GET['name'])) { ?>
         Thanks, <strong style="color:#16303c"><?php echo htmlspecialchars($_GET['name']); ?></strong> —
-        your account has been created.
+        <?php if (isset($_GET['org'])) { ?>
+          <strong style="color:#16303c"><?php echo htmlspecialchars($_GET['org']); ?></strong>
+          and your coordinator account have been created.
+        <?php } else { ?>
+          your account has been created.
+        <?php } ?>
       <?php } ?>
       It is under review, and you will receive a confirmation email within
       1–2 business days once approved by the System Administrator.

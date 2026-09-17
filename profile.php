@@ -1,6 +1,34 @@
 <?php
 $page_title = 'My Profile | VPMS';
 $active = 'profile';
+
+require 'includes/auth.php';
+require 'config/db.php';
+
+// everything about the person who is signed in
+$find = $pdo->prepare(
+    'SELECT u.full_name, u.email, u.phone, u.organisation_name, u.designation,
+            u.status, u.created_at, r.name AS role_name,
+            o.name AS organisation
+     FROM `user` u
+     JOIN role r ON r.role_id = u.role_id
+     LEFT JOIN organisation o ON o.organisation_id = u.organisation_id
+     WHERE u.user_id = ?'
+);
+$find->execute(array($_SESSION['user_id']));
+$me = $find->fetch(PDO::FETCH_ASSOC);
+
+// an organisation account shows the real organisation, everyone else the typed one
+if ($me['organisation'] != '') {
+    $organisation = $me['organisation'];
+} elseif ($me['organisation_name'] != '') {
+    $organisation = $me['organisation_name'];
+} else {
+    $organisation = '';
+}
+
+$member_since = date('F Y', strtotime($me['created_at']));
+
 include 'includes/app-header.php';
 ?>
 
@@ -13,11 +41,16 @@ include 'includes/app-header.php';
 <h1 class="page-title mb-4">My Profile</h1>
 
 <div class="card-v card-v-pad mb-4">
-  <h2 style="font-family:'Fraunces',serif;font-size:25px;font-weight:400;margin-bottom:8px">Pradeep Shrestha</h2>
+  <h2 style="font-family:'Fraunces',serif;font-size:25px;font-weight:400;margin-bottom:8px">
+    <?php echo htmlspecialchars($me['full_name']); ?>
+  </h2>
   <div class="d-flex flex-wrap gap-4" style="font-size:13.5px;color:#6d7880">
-    <span><i class="bi bi-envelope me-2"></i>admin@vpms.org</span>
-    <span>System Administrator</span>
-    <span>Member since Sept 2026</span>
+    <span><i class="bi bi-envelope me-2"></i><?php echo htmlspecialchars($me['email']); ?></span>
+    <span><?php echo $me['role_name']; ?></span>
+    <span>Member since <?php echo $member_since; ?></span>
+    <?php if ($me['status'] != 'active') { ?>
+      <span class="badge-v badge-pending"><?php echo $me['status']; ?></span>
+    <?php } ?>
   </div>
 </div>
 
@@ -32,22 +65,29 @@ include 'includes/app-header.php';
 
       <div class="field">
         <label class="field-label" for="fullname">Full Name</label>
-        <input class="input-v" type="text" id="fullname" value="Pradeep Shrestha">
+        <input class="input-v" type="text" id="fullname" value="<?php echo htmlspecialchars($me['full_name']); ?>" readonly>
       </div>
 
       <div class="field">
         <label class="field-label" for="email">Email Address</label>
-        <input class="input-v" type="email" id="email" value="admin@vpms.org">
+        <input class="input-v" type="email" id="email" value="<?php echo htmlspecialchars($me['email']); ?>" readonly>
       </div>
 
       <div class="field">
         <label class="field-label" for="phone">Phone Number</label>
-        <input class="input-v" type="tel" id="phone" value="+60 12-345 6789">
+        <input class="input-v" type="tel" id="phone" value="<?php echo htmlspecialchars($me['phone']); ?>" readonly>
       </div>
+
+      <?php if ($me['designation'] != '') { ?>
+        <div class="field">
+          <label class="field-label" for="designation">Designation / Role</label>
+          <input class="input-v" type="text" id="designation" value="<?php echo htmlspecialchars($me['designation']); ?>" readonly>
+        </div>
+      <?php } ?>
 
       <div class="field mb-0">
         <label class="field-label" for="org">Organisation / Affiliation</label>
-        <input class="input-v" type="text" id="org" value="Green Future">
+        <input class="input-v" type="text" id="org" value="<?php echo htmlspecialchars($organisation); ?>" readonly>
       </div>
     </div>
   </div>
@@ -61,15 +101,15 @@ include 'includes/app-header.php';
           <span class="d-block" style="font-size:14px;font-weight:600">Total Hours Volunteered</span>
           <span class="d-block" style="font-size:12.5px;color:#6d7880">Approved logs only</span>
         </span>
-        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e">248 hrs</span>
+        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e">0 hrs</span>
       </div>
 
       <div class="d-flex align-items-center gap-3 mb-3" style="padding:15px 18px;border-radius:8px;background:#eef4fa">
         <span class="flex-grow-1">
           <span class="d-block" style="font-size:14px;font-weight:600">Events Attended</span>
-          <span class="d-block" style="font-size:12.5px;color:#6d7880">Across Selangor &amp; KL</span>
+          <span class="d-block" style="font-size:12.5px;color:#6d7880">Across all organisations</span>
         </span>
-        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e">32</span>
+        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e">0</span>
       </div>
 
       <div class="d-flex align-items-center gap-3 mb-3" style="padding:15px 18px;border-radius:8px;background:#eef4fa">
@@ -77,7 +117,7 @@ include 'includes/app-header.php';
           <span class="d-block" style="font-size:14px;font-weight:600">Opportunities Joined</span>
           <span class="d-block" style="font-size:12.5px;color:#6d7880">Active involvement</span>
         </span>
-        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e">14</span>
+        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e">0</span>
       </div>
 
       <div class="d-flex align-items-center gap-3" style="padding:15px 18px;border-radius:8px;background:#eef4fa">
@@ -85,8 +125,12 @@ include 'includes/app-header.php';
           <span class="d-block" style="font-size:14px;font-weight:600">Partnerships Managed</span>
           <span class="d-block" style="font-size:12.5px;color:#6d7880">SDG 17 Core</span>
         </span>
-        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e">24</span>
+        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e">0</span>
       </div>
+
+      <p class="mt-3" style="font-size:12.5px;color:#98a2aa">
+        These stay at zero until the attendance and application tables are built.
+      </p>
     </div>
   </div>
 </div>
@@ -94,7 +138,7 @@ include 'includes/app-header.php';
 <div class="card-v card-v-pad">
   <p style="font-family:'Fraunces',serif;font-size:19px;margin-bottom:18px">Security &amp; Password</p>
 
-  <form action="profile.php" method="get">
+  <form action="profile.php" method="post">
     <div class="row g-3">
       <div class="col-md-4">
         <label class="field-label" for="current">Current Password</label>

@@ -1,3 +1,20 @@
+<?php
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Who is signed in. Pages that do not check for a login yet fall back to the
+// demo administrator, so the prototype still renders.
+$user_name = isset($_SESSION['full_name']) ? $_SESSION['full_name'] : 'Pradeep Shrestha';
+$user_role = isset($_SESSION['role_name']) ? $_SESSION['role_name'] : 'System Administrator';
+
+// first letter of the first two words, e.g. "Aruna Tamang" -> "AT"
+$name_parts = explode(' ', $user_name);
+$user_initials = strtoupper(substr($name_parts[0], 0, 1));
+if (isset($name_parts[1])) {
+    $user_initials .= strtoupper(substr($name_parts[1], 0, 1));
+}
+?>
 <!doctype html>
 <html lang="en">
 <head>
@@ -54,13 +71,13 @@
 
   <div class="sidebar-bottom">
     <a class="side-user <?php if ($active == 'profile') echo 'active'; ?>" href="profile.php">
-      <span class="initials">PS</span>
+      <span class="initials"><?php echo $user_initials; ?></span>
       <span>
-        <span class="user-name">Pradeep Shrestha</span>
-        <span class="user-role">System Administrator</span>
+        <span class="user-name"><?php echo htmlspecialchars($user_name); ?></span>
+        <span class="user-role"><?php echo htmlspecialchars($user_role); ?></span>
       </span>
     </a>
-    <a class="side-out" href="index.php"><i class="bi bi-arrow-right"></i> Sign Out</a>
+    <a class="side-out" href="logout.php"><i class="bi bi-arrow-right"></i> Sign Out</a>
   </div>
 
 </div>

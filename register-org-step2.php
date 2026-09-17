@@ -1,6 +1,96 @@
 <?php
 $page_title = 'Register your Organisation | VPMS';
 $body_class = 'auth-center';
+
+require 'config/db.php';
+
+session_start();
+
+// step 1 must have been filled in first
+if (!isset($_SESSION['new_org'])) {
+    header('Location: register-org.php');
+    exit;
+}
+
+$org = $_SESSION['new_org'];
+
+$errors = array();
+$contact = '';
+$designation = '';
+$email = '';
+$phone = '';
+$about = '';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+
+    $contact = trim($_POST['contact']);
+    $designation = trim($_POST['designation']);
+    $email = trim($_POST['email']);
+    $phone = trim($_POST['phone']);
+    $about = trim($_POST['about']);
+    $password = $_POST['password'];
+    $confirm = $_POST['confirm'];
+
+    if ($contact == '') {
+        $errors[] = 'Enter the contact person\'s name.';
+    }
+
+    if ($email == '') {
+        $errors[] = 'Enter an email address.';
+    } elseif (filter_var($email, FILTER_VALIDATE_EMAIL) == false) {
+        $errors[] = 'That email address does not look right.';
+    }
+
+    if (strlen($password) < 8) {
+        $errors[] = 'The password needs at least 8 characters.';
+    }
+
+    if ($password != $confirm) {
+        $errors[] = 'The two passwords do not match.';
+    }
+
+    if (count($errors) == 0) {
+        $check = $pdo->prepare('SELECT user_id FROM `user` WHERE email = ?');
+        $check->execute(array($email));
+
+        if ($check->fetch()) {
+            $errors[] = 'An account with that email already exists. Try signing in instead.';
+        }
+    }
+
+    if (count($errors) == 0) {
+
+        // save the organisation first, because the contact account points at it
+        $save_org = $pdo->prepare(
+            'INSERT INTO organisation (name, type, registration_no, country, state, city, address, website, description)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+
+        $save_org->execute(array(
+            $org['name'], $org['type'], $org['reg'], $org['country'],
+            $org['state'], $org['city'], $org['address'], $org['website'], $about
+        ));
+
+        $organisation_id = $pdo->lastInsertId();
+
+        // the contact person becomes an NGO Coordinator account (role 2)
+        $save_user = $pdo->prepare(
+            'INSERT INTO `user` (full_name, email, password_hash, phone, role_id, organisation_id, designation)
+             VALUES (?, ?, ?, ?, 2, ?, ?)'
+        );
+
+        $save_user->execute(array(
+            $contact, $email, password_hash($password, PASSWORD_DEFAULT),
+            $phone, $organisation_id, $designation
+        ));
+
+        unset($_SESSION['new_org']);
+
+        header('Location: register-success.php?name=' . urlencode($contact) . '&org=' . urlencode($org['name']));
+        exit;
+    }
+}
+
 include 'includes/auth-header.php';
 ?>
 
@@ -19,32 +109,61 @@ include 'includes/auth-header.php';
     <span class="done"></span>
   </div>
 
-  <form action="register-success.php" method="get">
+  <p class="mb-4" style="font-size:13.5px;color:#6d7880">
+    Registering <strong style="color:#16663e"><?php echo htmlspecialchars($org['name']); ?></strong>
+    (<?php echo htmlspecialchars($org['type']); ?>).
+    <a class="link-green" href="register-org.php" style="font-weight:400">Change</a>
+  </p>
+
+  <?php if (count($errors) > 0) { ?>
+    <div class="notice mb-4" style="border-left-color:#c8504b;background:#fdf3f2">
+      <p class="notice-title" style="color:#c8504b">Please fix the following</p>
+      <?php foreach ($errors as $error) { ?>
+        <p class="notice-text"><?php echo $error; ?></p>
+      <?php } ?>
+    </div>
+  <?php } ?>
+
+  <form action="register-org-step2.php" method="post">
 
     <div class="field">
       <label class="field-label" for="contact">Contact Person Name</label>
-      <input class="input-v" type="text" id="contact" name="contact" placeholder="e.g. Amara Osei">
+      <input class="input-v" type="text" id="contact" name="contact" placeholder="e.g. Amara Osei"
+             value="<?php echo htmlspecialchars($contact); ?>">
     </div>
 
     <div class="field">
-      <label class="field-label" for="role">Designation/Role</label>
-      <input class="input-v" type="text" id="role" name="role" placeholder="e.g. NGO Coordinator">
+      <label class="field-label" for="designation">Designation/Role</label>
+      <input class="input-v" type="text" id="designation" name="designation" placeholder="e.g. NGO Coordinator"
+             value="<?php echo htmlspecialchars($designation); ?>">
     </div>
 
     <div class="field">
       <label class="field-label" for="email">Email Address</label>
-      <input class="input-v" type="email" id="email" name="email" placeholder="you@organisation.org">
+      <input class="input-v" type="email" id="email" name="email" placeholder="you@organisation.org"
+             value="<?php echo htmlspecialchars($email); ?>">
     </div>
 
     <div class="field">
       <label class="field-label" for="phone">Phone Number</label>
-      <input class="input-v" type="tel" id="phone" name="phone" placeholder="e.g. +60 12-345 6789">
+      <input class="input-v" type="tel" id="phone" name="phone" placeholder="e.g. +60 12-345 6789"
+             value="<?php echo htmlspecialchars($phone); ?>">
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="password">Password</label>
+      <input class="input-v" type="password" id="password" name="password" placeholder="At least 8 characters">
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="confirm">Confirm Password</label>
+      <input class="input-v" type="password" id="confirm" name="confirm" placeholder="••••••••">
     </div>
 
     <div class="field">
       <label class="field-label" for="about">Organisation Description</label>
       <textarea class="textarea-v" id="about" name="about"
-                placeholder="Briefly describe your focus areas and mission..."></textarea>
+                placeholder="Briefly describe your focus areas and mission..."><?php echo htmlspecialchars($about); ?></textarea>
     </div>
 
     <div class="field mb-4">
@@ -53,7 +172,7 @@ include 'includes/auth-header.php';
         <input type="file" name="documents[]" multiple hidden>
         <i class="bi bi-upload" style="font-size:18px"></i>
         <span class="dz-title">Click to upload or drag &amp; drop</span>
-        <span class="dz-note">PDF, DOCX, or JPEG up to 10MB</span>
+        <span class="dz-note">PDF, DOCX, or JPEG up to 10MB — not stored yet</span>
       </label>
     </div>
 
