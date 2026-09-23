@@ -1,6 +1,45 @@
 <?php
 $page_title = 'Post Announcement | VPMS';
 $active = 'messages';
+
+require 'includes/auth.php';
+require 'config/db.php';
+
+$errors = array();
+$title = '';
+$audience = 'Everyone on the platform';
+$body = '';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $title = trim($_POST['title']);
+    $audience = $_POST['audience'];
+    $body = trim($_POST['body']);
+
+    if (isset($_POST['pin'])) {
+        $pinned = 1;
+    } else {
+        $pinned = 0;
+    }
+
+    if ($title == '') {
+        $errors[] = 'Give the announcement a title.';
+    }
+
+    if ($body == '') {
+        $errors[] = 'Write the announcement itself.';
+    }
+
+    if (count($errors) == 0) {
+        $save = $pdo->prepare(
+            'INSERT INTO announcement (title, body, audience, pinned, posted_by) VALUES (?, ?, ?, ?, ?)'
+        );
+        $save->execute(array($title, $body, $audience, $pinned, $_SESSION['user_id']));
+
+        header('Location: messages.php?posted=1');
+        exit;
+    }
+}
+
 include 'includes/app-header.php';
 ?>
 
@@ -11,32 +50,41 @@ include 'includes/app-header.php';
   <h1 class="page-title">Post Announcement</h1>
   <p class="page-sub mb-4">Broadcast to the network. Announcements appear at the top of Communications.</p>
 
-  <form action="messages.php" method="get">
-    <input type="hidden" name="posted" value="1">
+  <?php if (count($errors) > 0) { ?>
+    <div class="notice mb-4" style="border-left-color:#c8504b;background:#fdf3f2">
+      <p class="notice-title" style="color:#c8504b">Please fix the following</p>
+      <?php foreach ($errors as $error) { ?>
+        <p class="notice-text"><?php echo $error; ?></p>
+      <?php } ?>
+    </div>
+  <?php } ?>
+
+  <form action="announcement-new.php" method="post">
 
     <div class="field">
       <label class="field-label" for="title">Announcement Title</label>
       <input class="input-v" type="text" id="title" name="title"
-             placeholder="e.g. New Volunteer Opportunity: Bondi Beach Clean-Up">
+             placeholder="e.g. New Volunteer Opportunity: Bondi Beach Clean-Up"
+             value="<?php echo htmlspecialchars($title); ?>">
     </div>
 
     <div class="field">
       <label class="field-label" for="audience">Audience</label>
       <select class="select-v" id="audience" name="audience">
-        <option>Everyone on the platform</option>
-        <option>Volunteers only</option>
-        <option>NGO Coordinators</option>
-        <option>Corporate CSR Managers</option>
-        <option>Community Field Officers</option>
-        <option>Sponsors / Donors</option>
-        <option>Partner organisations</option>
+        <option <?php if ($audience == 'Everyone on the platform') echo 'selected'; ?>>Everyone on the platform</option>
+        <option <?php if ($audience == 'Volunteers only') echo 'selected'; ?>>Volunteers only</option>
+        <option <?php if ($audience == 'NGO Coordinators') echo 'selected'; ?>>NGO Coordinators</option>
+        <option <?php if ($audience == 'Corporate CSR Managers') echo 'selected'; ?>>Corporate CSR Managers</option>
+        <option <?php if ($audience == 'Community Field Officers') echo 'selected'; ?>>Community Field Officers</option>
+        <option <?php if ($audience == 'Sponsors / Donors') echo 'selected'; ?>>Sponsors / Donors</option>
+        <option <?php if ($audience == 'Partner organisations') echo 'selected'; ?>>Partner organisations</option>
       </select>
     </div>
 
     <div class="field">
       <label class="field-label" for="body">Message</label>
       <textarea class="textarea-v" id="body" name="body" style="min-height:150px"
-                placeholder="Write the announcement..."></textarea>
+                placeholder="Write the announcement..."><?php echo htmlspecialchars($body); ?></textarea>
     </div>
 
     <div class="field mb-4">

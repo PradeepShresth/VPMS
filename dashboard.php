@@ -3,12 +3,119 @@ $page_title = 'Dashboard | VPMS';
 $active = 'dashboard';
 
 require 'includes/auth.php';
+require 'config/db.php';
+
+$count = $pdo->prepare('SELECT COUNT(*) FROM `user` WHERE role_id = ?');
+$count->execute(array(1));
+$volunteers = $count->fetchColumn();
+
+$count = $pdo->prepare('SELECT COUNT(*) FROM `user` WHERE created_at >= ?');
+$count->execute(array(date('Y-m-01')));
+$joined_this_month = $count->fetchColumn();
+
+$count = $pdo->query('SELECT COUNT(*) FROM organisation');
+$organisations = $count->fetchColumn();
+
+$count = $pdo->prepare('SELECT COUNT(*) FROM organisation WHERE status = ?');
+$count->execute(array('pending'));
+$organisations_waiting = $count->fetchColumn();
+
+$count = $pdo->prepare('SELECT COUNT(*) FROM partnership WHERE status = ?');
+$count->execute(array('active'));
+$partnerships_active = $count->fetchColumn();
+
+$count = $pdo->prepare('SELECT COUNT(*) FROM partnership WHERE status = ?');
+$count->execute(array('pending'));
+$partnerships_waiting = $count->fetchColumn();
+
+$count = $pdo->prepare('SELECT COUNT(*) FROM opportunity WHERE status = ?');
+$count->execute(array('open'));
+$projects = $count->fetchColumn();
+
+$count = $pdo->query('SELECT COUNT(DISTINCT category) FROM opportunity');
+$categories = $count->fetchColumn();
+
+$find = $pdo->query(
+    'SELECT o.opportunity_id, o.title, o.location, o.spots, o.status,
+            org.name AS organisation, u.organisation_name,
+            (SELECT COUNT(*) FROM application a
+              WHERE a.opportunity_id = o.opportunity_id AND a.status = \'accepted\') AS filled
+     FROM opportunity o
+     LEFT JOIN organisation org ON org.organisation_id = o.organisation_id
+     LEFT JOIN `user` u ON u.user_id = o.created_by
+     ORDER BY o.created_at DESC
+     LIMIT 3'
+);
+$opportunities = $find->fetchAll();
+
+$find = $pdo->prepare(
+    'SELECT e.event_id, e.title, e.event_date, e.event_time, e.volunteers_needed,
+            (SELECT COUNT(*) FROM event_volunteer ev
+              WHERE ev.event_id = e.event_id AND ev.status = \'confirmed\') AS joined
+     FROM event e
+     WHERE e.event_date >= ?
+     ORDER BY e.event_date
+     LIMIT 3'
+);
+$find->execute(array(date('Y-m-d')));
+$events = $find->fetchAll();
+
+$find = $pdo->prepare(
+    'SELECT p.partnership_id, p.sdg_goals, asked.name AS asked_by, partner.name AS partner_name
+     FROM partnership p
+     LEFT JOIN organisation asked ON asked.organisation_id = p.organisation_id
+     LEFT JOIN organisation partner ON partner.organisation_id = p.partner_id
+     WHERE p.status = ?
+     ORDER BY p.created_at DESC
+     LIMIT 3'
+);
+$find->execute(array('active'));
+$partnerships = $find->fetchAll();
+
+// sdg_goals is saved as text like 13,17 so it has to be split up again
+$goals_covered = array();
+
+$find = $pdo->query('SELECT sdg_goals FROM opportunity WHERE sdg_goals != \'\'');
+
+foreach ($find->fetchAll() as $row) {
+    foreach (explode(',', $row['sdg_goals']) as $goal) {
+        $goal = trim($goal);
+        if ($goal != '' && !in_array($goal, $goals_covered)) {
+            $goals_covered[] = $goal;
+        }
+    }
+}
+
+$find = $pdo->query('SELECT sdg_goals FROM partnership WHERE sdg_goals != \'\'');
+
+foreach ($find->fetchAll() as $row) {
+    foreach (explode(',', $row['sdg_goals']) as $goal) {
+        $goal = trim($goal);
+        if ($goal != '' && !in_array($goal, $goals_covered)) {
+            $goals_covered[] = $goal;
+        }
+    }
+}
+
+sort($goals_covered);
+
+$hour = date('G');
+
+if ($hour < 12) {
+    $greeting = 'Good morning';
+} elseif ($hour < 18) {
+    $greeting = 'Good afternoon';
+} else {
+    $greeting = 'Good evening';
+}
+
+$first_name = explode(' ', $_SESSION['full_name']);
 
 include 'includes/app-header.php';
 ?>
 
 <div class="mb-4">
-  <h1 class="page-title">Good morning, Dr.</h1>
+  <h1 class="page-title"><?php echo $greeting; ?>, <?php echo htmlspecialchars($first_name[0]); ?>.</h1>
   <p class="page-sub">Platform overview — all systems operational.</p>
 </div>
 
@@ -16,30 +123,30 @@ include 'includes/app-header.php';
 <div class="row g-3 mb-4">
   <div class="col-6 col-xl-3">
     <div class="stat-card">
-      <span class="stat-value">4,820</span>
+      <span class="stat-value"><?php echo $volunteers; ?></span>
       <span class="stat-label">Total Volunteers</span>
-      <span class="stat-note">+124 this month</span>
+      <span class="stat-note">+<?php echo $joined_this_month; ?> this month</span>
     </div>
   </div>
   <div class="col-6 col-xl-3">
     <div class="stat-card">
-      <span class="stat-value">142</span>
+      <span class="stat-value"><?php echo $organisations; ?></span>
       <span class="stat-label">Organisations</span>
-      <span class="stat-note">8 pending verification</span>
+      <span class="stat-note"><?php echo $organisations_waiting; ?> pending verification</span>
     </div>
   </div>
   <div class="col-6 col-xl-3">
     <div class="stat-card">
-      <span class="stat-value">24</span>
+      <span class="stat-value"><?php echo $partnerships_active; ?></span>
       <span class="stat-label">Active Partnerships</span>
-      <span class="stat-note">3 pending approval</span>
+      <span class="stat-note"><?php echo $partnerships_waiting; ?> pending approval</span>
     </div>
   </div>
   <div class="col-6 col-xl-3">
     <div class="stat-card">
-      <span class="stat-value">67</span>
-      <span class="stat-label">Active Projects</span>
-      <span class="stat-note">Across 7 modules</span>
+      <span class="stat-value"><?php echo $projects; ?></span>
+      <span class="stat-label">Open Opportunities</span>
+      <span class="stat-note">Across <?php echo $categories; ?> categories</span>
     </div>
   </div>
 </div>
@@ -54,29 +161,42 @@ include 'includes/app-header.php';
     </div>
 
     <div class="list-card h-100">
-      <a class="list-row" href="opportunity-details.php">
-        <span class="row-icon"><i class="bi bi-diamond"></i></span>
-        <span class="flex-grow-1 min-w-0">
-          <span class="row-title d-block">Beach Clean-Up Drive — Bondi Junction</span>
-          <span class="row-meta d-block" style="color:#16663e">Green Future NGO · Bronte Road, Bondi Junction</span>
-        </span>
-        <span class="text-end">
-          <span class="badge-v badge-navy d-block mb-2">Open</span>
-          <span class="mono" style="font-size:12.5px;color:#6d7880">12/30 spots</span>
-        </span>
-      </a>
-      <a class="list-row" href="opportunity-details.php">
-        <span class="row-icon"><i class="bi bi-diamond"></i></span>
-        <span class="flex-grow-1 min-w-0">
-          <span class="row-title d-block">Food Bank Sorting &amp; Distribution</span>
-          <span class="row-meta d-block" style="color:#16663e">Kalanki Community Kitchen · Patan, Lalitpur</span>
-        </span>
-        <span class="text-end">
-          <span class="badge-v badge-navy d-block mb-2">Open</span>
-          <span class="mono" style="font-size:12.5px;color:#6d7880">20/25 spots</span>
-        </span>
-      </a>
-      <div class="list-row" style="min-height:74px"></div>
+      <?php if (count($opportunities) == 0) { ?>
+        <div class="list-row">
+          <span style="font-size:14px;color:#6d7880">Nothing posted yet.</span>
+        </div>
+      <?php } ?>
+
+      <?php foreach ($opportunities as $row) { ?>
+
+        <?php
+        if ($row['organisation'] != '') {
+            $posted_by = $row['organisation'];
+        } else {
+            $posted_by = $row['organisation_name'];
+        }
+        ?>
+
+        <a class="list-row" href="opportunity-details.php?id=<?php echo $row['opportunity_id']; ?>">
+          <span class="row-icon"><i class="bi bi-diamond"></i></span>
+          <span class="flex-grow-1 min-w-0">
+            <span class="row-title d-block"><?php echo htmlspecialchars($row['title']); ?></span>
+            <span class="row-meta d-block" style="color:#16663e">
+              <?php echo htmlspecialchars($posted_by); ?> · <?php echo htmlspecialchars($row['location']); ?>
+            </span>
+          </span>
+          <span class="text-end">
+            <?php if ($row['status'] == 'open') { ?>
+              <span class="badge-v badge-navy d-block mb-2">Open</span>
+            <?php } else { ?>
+              <span class="badge-v badge-grey d-block mb-2">Closed</span>
+            <?php } ?>
+            <span class="mono" style="font-size:12.5px;color:#6d7880">
+              <?php echo $row['filled']; ?>/<?php echo $row['spots']; ?> spots
+            </span>
+          </span>
+        </a>
+      <?php } ?>
     </div>
   </div>
 
@@ -87,29 +207,43 @@ include 'includes/app-header.php';
       <a class="ms-auto link-green" style="font-size:13.5px" href="events.php">View all &rarr;</a>
     </div>
 
-    <a class="card-v card-v-pad d-block mb-3" href="event-details.php">
-      <div class="d-flex align-items-start gap-2 mb-2">
-        <span class="row-title">Food Distribution in Manang</span>
-        <span class="badge-v badge-blue ms-auto">Upcoming</span>
+    <?php if (count($events) == 0) { ?>
+      <div class="card-v card-v-pad">
+        <p style="font-size:14px;color:#6d7880">Nothing scheduled yet.</p>
       </div>
-      <p class="mono mb-3" style="font-size:12.5px;color:#6d7880">7 Sept &nbsp;·&nbsp; 07:30 AM</p>
-      <div class="d-flex align-items-center gap-3">
-        <div class="bar flex-grow-1"><span style="width:88%"></span></div>
-        <span class="mono" style="font-size:12.5px;color:#6d7880">22/25</span>
-      </div>
-    </a>
+    <?php } ?>
 
-    <a class="card-v card-v-pad d-block mb-3" href="event-details.php">
-      <div class="d-flex align-items-start gap-2 mb-2">
-        <span class="row-title">Cleaning Riverbank</span>
-        <span class="badge-v badge-blue ms-auto">Upcoming</span>
-      </div>
-      <p class="mono mb-3" style="font-size:12.5px;color:#6d7880">13 Sept &nbsp;·&nbsp; 09:00 AM</p>
-      <div class="d-flex align-items-center gap-3">
-        <div class="bar flex-grow-1"><span style="width:67%"></span></div>
-        <span class="mono" style="font-size:12.5px;color:#6d7880">8/12</span>
-      </div>
-    </a>
+    <?php foreach ($events as $row) { ?>
+
+      <?php
+      if ($row['volunteers_needed'] > 0) {
+          $percent = round($row['joined'] / $row['volunteers_needed'] * 100);
+      } else {
+          $percent = 0;
+      }
+      ?>
+
+      <a class="card-v card-v-pad d-block mb-3" href="event-details.php?id=<?php echo $row['event_id']; ?>">
+        <div class="d-flex align-items-start gap-2 mb-2">
+          <span class="row-title"><?php echo htmlspecialchars($row['title']); ?></span>
+          <?php if ($row['event_date'] == date('Y-m-d')) { ?>
+            <span class="badge-v badge-navy ms-auto">Ongoing</span>
+          <?php } else { ?>
+            <span class="badge-v badge-blue ms-auto">Upcoming</span>
+          <?php } ?>
+        </div>
+        <p class="mono mb-3" style="font-size:12.5px;color:#6d7880">
+          <?php echo date('j M', strtotime($row['event_date'])); ?>
+          &nbsp;·&nbsp; <?php echo date('h:i A', strtotime($row['event_time'])); ?>
+        </p>
+        <div class="d-flex align-items-center gap-3">
+          <div class="bar flex-grow-1"><span style="width:<?php echo min($percent, 100); ?>%"></span></div>
+          <span class="mono" style="font-size:12.5px;color:#6d7880">
+            <?php echo $row['joined']; ?>/<?php echo $row['volunteers_needed']; ?>
+          </span>
+        </div>
+      </a>
+    <?php } ?>
   </div>
 </div>
 
@@ -123,36 +257,32 @@ include 'includes/app-header.php';
     </div>
 
     <div class="list-card h-100">
-      <a class="list-row align-items-start" href="partnership-details.php">
-        <span class="flex-grow-1">
-          <span class="row-title d-block">Green Future NGO</span>
-          <span class="row-meta d-block" style="color:#16663e">
-            <i class="bi bi-arrow-left-right"></i> TechCorp China
-          </span>
-          <span class="d-flex flex-wrap gap-2 mt-2">
-            <span class="chip chip-mono">SDG 13</span>
-            <span class="chip chip-mono">SDG 15</span>
-            <span class="chip chip-mono">SDG 17</span>
-          </span>
-        </span>
-        <span class="badge-v badge-navy">Active</span>
-      </a>
+      <?php if (count($partnerships) == 0) { ?>
+        <div class="list-row">
+          <span style="font-size:14px;color:#6d7880">No active partnerships yet.</span>
+        </div>
+      <?php } ?>
 
-      <a class="list-row align-items-start" href="partnership-details.php">
-        <span class="flex-grow-1">
-          <span class="row-title d-block">UN Bagmati Office</span>
-          <span class="row-meta d-block" style="color:#16663e">
-            <i class="bi bi-arrow-left-right"></i> Global Impact Fund
+      <?php foreach ($partnerships as $row) { ?>
+        <a class="list-row align-items-start" href="partnership-details.php?id=<?php echo $row['partnership_id']; ?>">
+          <span class="flex-grow-1">
+            <span class="row-title d-block"><?php echo htmlspecialchars($row['asked_by']); ?></span>
+            <span class="row-meta d-block" style="color:#16663e">
+              <i class="bi bi-arrow-left-right"></i> <?php echo htmlspecialchars($row['partner_name']); ?>
+            </span>
+            <span class="d-flex flex-wrap gap-2 mt-2">
+              <?php
+              foreach (explode(',', $row['sdg_goals']) as $goal) {
+                  $goal = trim($goal);
+                  if ($goal != '') { ?>
+                    <span class="chip chip-mono">SDG <?php echo htmlspecialchars($goal); ?></span>
+              <?php }
+              } ?>
+            </span>
           </span>
-          <span class="d-flex flex-wrap gap-2 mt-2">
-            <span class="chip chip-mono">SDG 4</span>
-            <span class="chip chip-mono">SDG 17</span>
-          </span>
-        </span>
-        <span class="badge-v badge-navy">Active</span>
-      </a>
-
-      <div class="list-row" style="min-height:120px"></div>
+          <span class="badge-v badge-navy">Active</span>
+        </a>
+      <?php } ?>
     </div>
   </div>
 
@@ -164,32 +294,60 @@ include 'includes/app-header.php';
     </div>
 
     <div class="card-v card-v-pad h-100">
-      <div class="sdg-grid mb-3" style="grid-template-columns:repeat(4,1fr)">
-        <div class="sdg-tile" style="background:#e5243b"><span class="s-word">SDG</span><span class="s-num">01</span></div>
-        <div class="sdg-tile" style="background:#dda63a"><span class="s-word">SDG</span><span class="s-num">02</span></div>
-        <div class="sdg-tile" style="background:#4c9f38"><span class="s-word">SDG</span><span class="s-num">03</span></div>
-        <div class="sdg-tile" style="background:#c5192d"><span class="s-word">SDG</span><span class="s-num">04</span></div>
-        <div class="sdg-tile" style="background:#3f7e44"><span class="s-word">SDG</span><span class="s-num">13</span></div>
-        <div class="sdg-tile" style="background:#0a97d9"><span class="s-word">SDG</span><span class="s-num">14</span></div>
-        <div class="sdg-tile" style="background:#56c02b"><span class="s-word">SDG</span><span class="s-num">15</span></div>
-        <div class="sdg-tile" style="background:#19486a"><span class="s-word">SDG</span><span class="s-num">17</span></div>
-      </div>
-      <p class="text-center" style="font-size:12.5px;color:#6d7880">
-        Platform activities contribute to 8 of 17 Global Goals
-      </p>
+      <?php if (count($goals_covered) == 0) { ?>
+        <p style="font-size:14px;color:#6d7880">
+          No SDG goals recorded yet. Tick them when posting an opportunity or requesting a partnership.
+        </p>
+      <?php } else { ?>
+        <div class="sdg-grid mb-3" style="grid-template-columns:repeat(4,1fr)">
+          <?php foreach ($goals_covered as $goal) { ?>
+
+            <?php
+            if ($goal == 1) { $colour = '#e5243b'; }
+            elseif ($goal == 2) { $colour = '#dda63a'; }
+            elseif ($goal == 3) { $colour = '#4c9f38'; }
+            elseif ($goal == 4) { $colour = '#c5192d'; }
+            elseif ($goal == 13) { $colour = '#3f7e44'; }
+            elseif ($goal == 14) { $colour = '#0a97d9'; }
+            elseif ($goal == 15) { $colour = '#56c02b'; }
+            else { $colour = '#19486a'; }
+            ?>
+
+            <div class="sdg-tile" style="background:<?php echo $colour; ?>">
+              <span class="s-word">SDG</span>
+              <span class="s-num"><?php echo str_pad($goal, 2, '0', STR_PAD_LEFT); ?></span>
+            </div>
+          <?php } ?>
+        </div>
+        <p class="text-center" style="font-size:12.5px;color:#6d7880">
+          Platform activities contribute to <?php echo count($goals_covered); ?> of 17 Global Goals
+        </p>
+      <?php } ?>
     </div>
   </div>
 </div>
 
 <!-- quick actions -->
-<div class="card-v card-v-pad">
-  <p class="section-label">Quick Actions</p>
-  <div class="d-flex flex-wrap gap-2">
-    <a class="btn-v btn-green" href="users.php">Manage Users</a>
-    <a class="btn-v btn-soft" href="applications-review.php">Review Applications</a>
-    <a class="btn-v btn-soft" href="organisations.php">Approve Organisations</a>
-    <a class="btn-v btn-soft" href="report-generate.php">Generate Report</a>
+<?php if ($_SESSION['role_id'] == 6) { ?>
+  <div class="card-v card-v-pad">
+    <p class="section-label">Quick Actions</p>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn-v btn-green" href="users.php">Manage Users</a>
+      <a class="btn-v btn-soft" href="applications-review.php">Review Applications</a>
+      <a class="btn-v btn-soft" href="organisations.php">Approve Organisations</a>
+      <a class="btn-v btn-soft" href="report-generate.php">Generate Report</a>
+    </div>
   </div>
-</div>
+<?php } else { ?>
+  <div class="card-v card-v-pad">
+    <p class="section-label">Quick Actions</p>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn-v btn-green" href="opportunities.php">Browse Opportunities</a>
+      <a class="btn-v btn-soft" href="events.php">My Events</a>
+      <a class="btn-v btn-soft" href="messages.php">Communications</a>
+      <a class="btn-v btn-soft" href="profile.php">My Profile</a>
+    </div>
+  </div>
+<?php } ?>
 
 <?php include 'includes/app-footer.php'; ?>

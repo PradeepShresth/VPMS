@@ -1,5 +1,23 @@
 <?php
 $page_title = 'VPMS | Volunteer Partnership Management System';
+
+require 'config/db.php';
+
+$count = $pdo->prepare('SELECT COUNT(*) FROM `user` WHERE role_id = ? AND status = ?');
+$count->execute(array(1, 'active'));
+$volunteers = $count->fetchColumn();
+
+$count = $pdo->prepare('SELECT COUNT(*) FROM organisation WHERE status = ?');
+$count->execute(array('verified'));
+$organisations = $count->fetchColumn();
+
+$count = $pdo->prepare('SELECT COALESCE(SUM(hours_logged), 0) FROM event_volunteer WHERE attended = ?');
+$count->execute(array(1));
+$hours = $count->fetchColumn();
+
+$count = $pdo->query('SELECT COUNT(*) FROM event');
+$events = $count->fetchColumn();
+
 include 'includes/header.php';
 ?>
 
@@ -77,20 +95,20 @@ include 'includes/header.php';
   <div class="stats-inner">
     <div class="row g-0">
       <div class="col-6 col-md-3 stat">
-        <span class="stat-value">4,820</span>
+        <span class="stat-value"><?php echo $volunteers; ?></span>
         <span class="stat-label">Active Volunteers</span>
       </div>
       <div class="col-6 col-md-3 stat">
-        <span class="stat-value">142</span>
+        <span class="stat-value"><?php echo $organisations; ?></span>
         <span class="stat-label">Partner Organisations</span>
       </div>
       <div class="col-6 col-md-3 stat">
-        <span class="stat-value">38,640</span>
+        <span class="stat-value"><?php echo $hours; ?></span>
         <span class="stat-label">Volunteer Hours</span>
       </div>
       <div class="col-6 col-md-3 stat">
-        <span class="stat-value">82,400</span>
-        <span class="stat-label">Lives Impacted</span>
+        <span class="stat-value"><?php echo $events; ?></span>
+        <span class="stat-label">Events Run</span>
       </div>
     </div>
   </div>
@@ -208,7 +226,7 @@ include 'includes/header.php';
 <section class="cta text-center">
   <div class="wrap-narrow">
     <h2 class="cta-title">Ready to make your impact?</h2>
-    <p class="cta-text">Join 142 organisations already building meaningful partnerships on VPMS.</p>
+    <p class="cta-text">Join <?php echo $organisations; ?> organisations already building meaningful partnerships on VPMS.</p>
     <a class="btn btn-amber btn-big" href="register.php">Create Your Account</a>
   </div>
 </section>

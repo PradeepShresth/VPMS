@@ -1,6 +1,48 @@
 <?php
 $page_title = 'Choose a New Password | VPMS';
 $body_class = 'auth-center';
+
+require 'config/db.php';
+
+if (isset($_POST['code'])) {
+    $code = $_POST['code'];
+} elseif (isset($_GET['code'])) {
+    $code = $_GET['code'];
+} else {
+    $code = '';
+}
+
+$find = $pdo->prepare('SELECT user_id, email FROM `user` WHERE reset_code = ? AND reset_code != ?');
+$find->execute(array($code, ''));
+$account = $find->fetch();
+
+$errors = array();
+
+if ($account == false) {
+    $errors[] = 'That reset link is not valid any more. Ask for a new one.';
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && $account != false) {
+    $password = $_POST['password'];
+    $confirm = $_POST['confirm'];
+
+    if (strlen($password) < 8) {
+        $errors[] = 'The password needs at least 8 characters.';
+    }
+
+    if ($password != $confirm) {
+        $errors[] = 'The two passwords do not match.';
+    }
+
+    if (count($errors) == 0) {
+        $save = $pdo->prepare('UPDATE `user` SET password_hash = ?, reset_code = NULL WHERE user_id = ?');
+        $save->execute(array(password_hash($password, PASSWORD_DEFAULT), $account['user_id']));
+
+        header('Location: reset-password-done.php');
+        exit;
+    }
+}
+
 include 'includes/auth-header.php';
 ?>
 
@@ -11,9 +53,31 @@ include 'includes/auth-header.php';
   </div>
 
   <h1 class="auth-title">Choose a new password</h1>
-  <p class="auth-sub">Resetting the password for <strong style="color:#16303c">admin@vpms.org</strong>.</p>
 
-  <form action="reset-password-done.php" method="get">
+  <?php if ($account != false) { ?>
+    <p class="auth-sub">
+      Resetting the password for
+      <strong style="color:#16303c"><?php echo htmlspecialchars($account['email']); ?></strong>.
+    </p>
+  <?php } ?>
+
+  <?php if (count($errors) > 0) { ?>
+    <div class="notice mb-4" style="border-left-color:#c8504b;background:#fdf3f2">
+      <?php foreach ($errors as $error) { ?>
+        <p class="notice-text"><?php echo $error; ?></p>
+      <?php } ?>
+      <?php if ($account == false) { ?>
+        <p class="notice-text mt-2">
+          <a class="link-green" href="forgot-password.php">Request a new reset link</a>
+        </p>
+      <?php } ?>
+    </div>
+  <?php } ?>
+
+  <?php if ($account != false) { ?>
+
+  <form action="reset-password.php" method="post">
+    <input type="hidden" name="code" value="<?php echo htmlspecialchars($code); ?>">
 
     <div class="field">
       <label class="field-label" for="password">New password</label>
@@ -39,8 +103,11 @@ include 'includes/auth-header.php';
     <button class="btn-v btn-green btn-block btn-lg-v" type="submit">Reset Password</button>
   </form>
 
+  <?php } ?>
+
 </div>
 
+<?php if ($account != false) { ?>
 <script>
 var password = document.getElementById('password');
 var confirm = document.getElementById('confirm');
@@ -48,7 +115,6 @@ var bar = document.getElementById('bar');
 var label = document.getElementById('label');
 var match = document.getElementById('match');
 
-// tick a rule off and count it towards the strength score
 function checkRule(id, passed) {
   var item = document.getElementById(id);
   var icon = item.querySelector('i');
@@ -108,5 +174,6 @@ function update() {
 password.onkeyup = update;
 confirm.onkeyup = update;
 </script>
+<?php } ?>
 
 <?php include 'includes/auth-footer.php'; ?>

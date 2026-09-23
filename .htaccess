@@ -1,0 +1,19 @@
+# VPMS — Apache configuration for XAMPP
+#
+# Assumes the project sits at C:\xampp\htdocs\VPMS and is served from
+# http://localhost/VPMS/. If you rename the folder, update the paths below.
+
+# Custom error pages
+ErrorDocument 404 /VPMS/404.php
+ErrorDocument 403 /VPMS/404.php
+
+# Serve index.php for the folder root
+DirectoryIndex index.php
+
+# Don't expose directory listings for assets/ or includes/
+Options -Indexes
+
+# Keep the shared includes and the database config from being opened directly
+<FilesMatch "^(app-header|app-footer|auth-header|auth-footer|header|footer|db)\.php$">
+    Require all denied
+</FilesMatch>

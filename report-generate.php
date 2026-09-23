@@ -1,6 +1,43 @@
 <?php
 $page_title = 'Generate Report | VPMS';
 $active = 'reports';
+
+require 'includes/auth.php';
+require 'config/db.php';
+
+$find = $pdo->query('SELECT organisation_id, name FROM organisation ORDER BY name');
+$organisations = $find->fetchAll();
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $type = $_POST['type'];
+    $from = $_POST['from'];
+    $to = $_POST['to'];
+
+    if ($from != '' && $to != '') {
+        $period = date('j M Y', strtotime($from)) . ' - ' . date('j M Y', strtotime($to));
+    } elseif ($from != '') {
+        $period = 'From ' . date('j M Y', strtotime($from));
+    } else {
+        $period = 'All time';
+    }
+
+    if ($_POST['org'] != '0') {
+        $find = $pdo->prepare('SELECT name FROM organisation WHERE organisation_id = ?');
+        $find->execute(array($_POST['org']));
+        $title = $type . ' — ' . $find->fetchColumn();
+    } else {
+        $title = $type . ' — All organisations';
+    }
+
+    $save = $pdo->prepare(
+        'INSERT INTO report (title, report_type, period, generated_by) VALUES (?, ?, ?, ?)'
+    );
+    $save->execute(array($title, $type, $period, $_SESSION['user_id']));
+
+    header('Location: reports.php?generated=1');
+    exit;
+}
+
 include 'includes/app-header.php';
 ?>
 
@@ -11,7 +48,7 @@ include 'includes/app-header.php';
   <h1 class="page-title">Generate Report</h1>
   <p class="page-sub mb-4">Build a certified impact report for partners, donors or regulators.</p>
 
-  <form action="reports.php" method="get">
+  <form action="report-generate.php" method="post">
 
     <div class="field">
       <label class="field-label" for="type">Report Type</label>
@@ -43,11 +80,10 @@ include 'includes/app-header.php';
     <div class="field">
       <label class="field-label" for="org">Organisation</label>
       <select class="select-v" id="org" name="org">
-        <option>All organisations</option>
-        <option>Green Future NGO</option>
-        <option>TechCorp China</option>
-        <option>Food Foundation</option>
-        <option>Global Impact Fund</option>
+        <option value="0">All organisations</option>
+        <?php foreach ($organisations as $row) { ?>
+          <option value="<?php echo $row['organisation_id']; ?>"><?php echo htmlspecialchars($row['name']); ?></option>
+        <?php } ?>
       </select>
     </div>
 
@@ -64,12 +100,9 @@ include 'includes/app-header.php';
     </div>
 
     <div class="field mb-4">
-      <span class="field-label">Output format</span>
-      <div class="d-flex flex-wrap gap-3">
-        <label class="check-v"><input type="radio" name="format" value="pdf" checked> PDF</label>
-        <label class="check-v"><input type="radio" name="format" value="csv"> CSV</label>
-        <label class="check-v"><input type="radio" name="format" value="xlsx"> Excel (XLSX)</label>
-      </div>
+      <p class="notice-text" style="color:#6d7880">
+        Reports download as CSV, which opens in Excel.
+      </p>
     </div>
 
     <div class="row g-3">

@@ -5,7 +5,38 @@ $active = 'profile';
 require 'includes/auth.php';
 require 'config/db.php';
 
-// everything about the person who is signed in
+$errors = array();
+$changed = false;
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $current = $_POST['current'];
+    $new = $_POST['new'];
+    $confirm = $_POST['confirm'];
+
+    $find = $pdo->prepare('SELECT password_hash FROM `user` WHERE user_id = ?');
+    $find->execute(array($_SESSION['user_id']));
+    $hash = $find->fetchColumn();
+
+    if (password_verify($current, $hash) == false) {
+        $errors[] = 'Your current password is not right.';
+    }
+
+    if (strlen($new) < 8) {
+        $errors[] = 'The new password needs at least 8 characters.';
+    }
+
+    if ($new != $confirm) {
+        $errors[] = 'The two new passwords do not match.';
+    }
+
+    if (count($errors) == 0) {
+        $save = $pdo->prepare('UPDATE `user` SET password_hash = ? WHERE user_id = ?');
+        $save->execute(array(password_hash($new, PASSWORD_DEFAULT), $_SESSION['user_id']));
+
+        $changed = true;
+    }
+}
+
 $find = $pdo->prepare(
     'SELECT u.full_name, u.email, u.phone, u.organisation_name, u.designation,
             u.status, u.created_at, r.name AS role_name,
@@ -16,9 +47,8 @@ $find = $pdo->prepare(
      WHERE u.user_id = ?'
 );
 $find->execute(array($_SESSION['user_id']));
-$me = $find->fetch(PDO::FETCH_ASSOC);
+$me = $find->fetch();
 
-// an organisation account shows the real organisation, everyone else the typed one
 if ($me['organisation'] != '') {
     $organisation = $me['organisation'];
 } elseif ($me['organisation_name'] != '') {
@@ -29,12 +59,39 @@ if ($me['organisation'] != '') {
 
 $member_since = date('F Y', strtotime($me['created_at']));
 
+$count = $pdo->prepare(
+    'SELECT COALESCE(SUM(hours_logged), 0) FROM event_volunteer WHERE user_id = ? AND attended = 1'
+);
+$count->execute(array($_SESSION['user_id']));
+$my_hours = $count->fetchColumn();
+
+$count = $pdo->prepare('SELECT COUNT(*) FROM event_volunteer WHERE user_id = ? AND attended = 1');
+$count->execute(array($_SESSION['user_id']));
+$my_events = $count->fetchColumn();
+
+$count = $pdo->prepare('SELECT COUNT(*) FROM application WHERE user_id = ? AND status = ?');
+$count->execute(array($_SESSION['user_id'], 'accepted'));
+$my_opportunities = $count->fetchColumn();
+
+if ($_SESSION['organisation_id'] != '') {
+    $count = $pdo->prepare(
+        'SELECT COUNT(*) FROM partnership
+          WHERE requested_by = ? OR organisation_id = ? OR partner_id = ?'
+    );
+    $count->execute(array($_SESSION['user_id'], $_SESSION['organisation_id'], $_SESSION['organisation_id']));
+} else {
+    $count = $pdo->prepare('SELECT COUNT(*) FROM partnership WHERE requested_by = ?');
+    $count->execute(array($_SESSION['user_id']));
+}
+
+$my_partnerships = $count->fetchColumn();
+
 include 'includes/app-header.php';
 ?>
 
-<?php if (isset($_GET['name'])) { ?>
+<?php if (isset($_GET['saved'])) { ?>
   <div class="banner"><i class="bi bi-check-circle-fill"></i>Profile updated.</div>
-<?php } elseif (isset($_GET['current'])) { ?>
+<?php } elseif ($changed) { ?>
   <div class="banner"><i class="bi bi-check-circle-fill"></i>Password updated.</div>
 <?php } ?>
 
@@ -46,7 +103,7 @@ include 'includes/app-header.php';
   </h2>
   <div class="d-flex flex-wrap gap-4" style="font-size:13.5px;color:#6d7880">
     <span><i class="bi bi-envelope me-2"></i><?php echo htmlspecialchars($me['email']); ?></span>
-    <span><?php echo $me['role_name']; ?></span>
+    <span><?php echo htmlspecialchars($me['role_name']); ?></span>
     <span>Member since <?php echo $member_since; ?></span>
     <?php if ($me['status'] != 'active') { ?>
       <span class="badge-v badge-pending"><?php echo $me['status']; ?></span>
@@ -99,9 +156,9 @@ include 'includes/app-header.php';
       <div class="d-flex align-items-center gap-3 mb-3" style="padding:15px 18px;border-radius:8px;background:#eef4fa">
         <span class="flex-grow-1">
           <span class="d-block" style="font-size:14px;font-weight:600">Total Hours Volunteered</span>
-          <span class="d-block" style="font-size:12.5px;color:#6d7880">Approved logs only</span>
+          <span class="d-block" style="font-size:12.5px;color:#6d7880">Recorded attendance only</span>
         </span>
-        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e">0 hrs</span>
+        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e"><?php echo $my_hours; ?> hrs</span>
       </div>
 
       <div class="d-flex align-items-center gap-3 mb-3" style="padding:15px 18px;border-radius:8px;background:#eef4fa">
@@ -109,15 +166,15 @@ include 'includes/app-header.php';
           <span class="d-block" style="font-size:14px;font-weight:600">Events Attended</span>
           <span class="d-block" style="font-size:12.5px;color:#6d7880">Across all organisations</span>
         </span>
-        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e">0</span>
+        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e"><?php echo $my_events; ?></span>
       </div>
 
       <div class="d-flex align-items-center gap-3 mb-3" style="padding:15px 18px;border-radius:8px;background:#eef4fa">
         <span class="flex-grow-1">
           <span class="d-block" style="font-size:14px;font-weight:600">Opportunities Joined</span>
-          <span class="d-block" style="font-size:12.5px;color:#6d7880">Active involvement</span>
+          <span class="d-block" style="font-size:12.5px;color:#6d7880">Applications accepted</span>
         </span>
-        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e">0</span>
+        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e"><?php echo $my_opportunities; ?></span>
       </div>
 
       <div class="d-flex align-items-center gap-3" style="padding:15px 18px;border-radius:8px;background:#eef4fa">
@@ -125,18 +182,23 @@ include 'includes/app-header.php';
           <span class="d-block" style="font-size:14px;font-weight:600">Partnerships Managed</span>
           <span class="d-block" style="font-size:12.5px;color:#6d7880">SDG 17 Core</span>
         </span>
-        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e">0</span>
+        <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e"><?php echo $my_partnerships; ?></span>
       </div>
-
-      <p class="mt-3" style="font-size:12.5px;color:#98a2aa">
-        These stay at zero until the attendance and application tables are built.
-      </p>
     </div>
   </div>
 </div>
 
 <div class="card-v card-v-pad">
   <p style="font-family:'Fraunces',serif;font-size:19px;margin-bottom:18px">Security &amp; Password</p>
+
+  <?php if (count($errors) > 0) { ?>
+    <div class="notice mb-4" style="border-left-color:#c8504b;background:#fdf3f2">
+      <p class="notice-title" style="color:#c8504b">Password not changed</p>
+      <?php foreach ($errors as $error) { ?>
+        <p class="notice-text"><?php echo $error; ?></p>
+      <?php } ?>
+    </div>
+  <?php } ?>
 
   <form action="profile.php" method="post">
     <div class="row g-3">

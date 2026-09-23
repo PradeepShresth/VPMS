@@ -1,6 +1,25 @@
 <?php
 $page_title = 'Request Partnership | VPMS';
 $active = 'partnerships';
+
+require 'includes/auth.php';
+require 'config/db.php';
+
+$my_organisation = $_SESSION['organisation_id'];
+
+if ($my_organisation != '') {
+    $find = $pdo->prepare(
+        'SELECT organisation_id, name, type FROM organisation
+         WHERE status = ? AND organisation_id != ? ORDER BY name'
+    );
+    $find->execute(array('verified', $my_organisation));
+} else {
+    $find = $pdo->prepare('SELECT organisation_id, name, type FROM organisation WHERE status = ? ORDER BY name');
+    $find->execute(array('verified'));
+}
+
+$partners = $find->fetchAll();
+
 include 'includes/app-header.php';
 ?>
 
@@ -18,50 +37,43 @@ include 'includes/app-header.php';
 
   <p class="section-label">Step 1: Select Partner Organisation</p>
 
-  <form action="partnership-request-step2.php" method="get">
+  <?php if ($my_organisation == '') { ?>
 
-    <label class="choice">
-      <input type="radio" name="partner" value="Green Future NGO">
-      <span class="choice-box">
-        <span class="choice-radio"></span>
-        <span class="choice-title">Green Future NGO</span>
-      </span>
-    </label>
+    <div class="notice mb-4">
+      <p class="notice-title">Your account is not linked to an organisation</p>
+      <p class="notice-text">
+        Partnership requests are made between two organisations. Register an organisation, or ask an
+        administrator to link your account to one, then come back here.
+      </p>
+    </div>
 
-    <label class="choice">
-      <input type="radio" name="partner" value="TechCorp China">
-      <span class="choice-box">
-        <span class="choice-radio"></span>
-        <span class="choice-title">TechCorp China</span>
-      </span>
-    </label>
+  <?php } elseif (count($partners) == 0) { ?>
 
-    <label class="choice">
-      <input type="radio" name="partner" value="EcoMalaysia Foundation">
-      <span class="choice-box">
-        <span class="choice-radio"></span>
-        <span class="choice-title">EcoMalaysia Foundation</span>
-      </span>
-    </label>
+    <div class="card-v card-v-pad text-center">
+      <p class="row-title mb-2">No organisations to partner with yet</p>
+      <p style="font-size:14px;color:#6d7880">
+        Only verified organisations can be chosen. Once another one is verified it will appear here.
+      </p>
+    </div>
 
-    <label class="choice">
-      <input type="radio" name="partner" value="Befrienders KL">
-      <span class="choice-box">
-        <span class="choice-radio"></span>
-        <span class="choice-title">Befrienders KL</span>
-      </span>
-    </label>
+  <?php } else { ?>
 
-    <label class="choice">
-      <input type="radio" name="partner" value="Global Impact Fund">
-      <span class="choice-box">
-        <span class="choice-radio"></span>
-        <span class="choice-title">Global Impact Fund</span>
-      </span>
-    </label>
+    <form action="partnership-request-step2.php" method="post">
 
-    <button class="btn-v btn-green btn-block btn-lg-v mt-3" type="submit">Continue &rarr;</button>
-  </form>
+      <?php foreach ($partners as $row) { ?>
+        <label class="choice">
+          <input type="radio" name="partner_id" value="<?php echo $row['organisation_id']; ?>" required>
+          <span class="choice-box">
+            <span class="choice-radio"></span>
+            <span class="choice-title"><?php echo htmlspecialchars($row['name']); ?></span>
+          </span>
+        </label>
+      <?php } ?>
+
+      <button class="btn-v btn-green btn-block btn-lg-v mt-3" type="submit">Continue &rarr;</button>
+    </form>
+
+  <?php } ?>
 
 </div>
 

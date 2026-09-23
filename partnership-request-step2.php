@@ -1,6 +1,21 @@
 <?php
 $page_title = 'Request Partnership | VPMS';
 $active = 'partnerships';
+
+require 'includes/auth.php';
+require 'config/db.php';
+
+$partner_id = isset($_POST['partner_id']) ? $_POST['partner_id'] : 0;
+
+$find = $pdo->prepare('SELECT name FROM organisation WHERE organisation_id = ?');
+$find->execute(array($partner_id));
+$partner = $find->fetch();
+
+if ($partner == false) {
+    header('Location: partnership-request.php');
+    exit;
+}
+
 include 'includes/app-header.php';
 ?>
 
@@ -18,7 +33,12 @@ include 'includes/app-header.php';
 
   <p class="section-label">Step 2: Partnership Details</p>
 
-  <form action="partnership-request-step3.php" method="get">
+  <p class="mb-4" style="font-size:13.5px;color:#6d7880">
+    Partnering with <strong style="color:#16663e"><?php echo htmlspecialchars($partner['name']); ?></strong>.
+  </p>
+
+  <form action="partnership-request-step3.php" method="post">
+    <input type="hidden" name="partner_id" value="<?php echo $partner_id; ?>">
 
     <div class="field">
       <label class="field-label" for="type">Partnership Type</label>
@@ -33,12 +53,12 @@ include 'includes/app-header.php';
 
     <div class="field">
       <label class="field-label" for="start">Start Date</label>
-      <input class="input-v" type="date" id="start" name="start">
+      <input class="input-v" type="date" id="start" name="start" required>
     </div>
 
     <div class="field">
       <label class="field-label" for="end">End Date</label>
-      <input class="input-v" type="date" id="end" name="end">
+      <input class="input-v" type="date" id="end" name="end" required>
     </div>
 
     <div class="field mb-4">
