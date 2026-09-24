@@ -7,7 +7,13 @@ require 'config/db.php';
 
 $filter = isset($_GET['filter']) ? $_GET['filter'] : 'all';
 
-$sql = 'SELECT p.*, asked.name AS asked_by, partner.name AS partner_name
+$sql = 'SELECT p.*, asked.name AS asked_by, partner.name AS partner_name,
+               (SELECT COUNT(*) FROM opportunity o WHERE o.partnership_id = p.partnership_id) AS projects,
+               (SELECT COALESCE(SUM(ev.hours_logged), 0)
+                  FROM event_volunteer ev
+                  JOIN event e ON e.event_id = ev.event_id
+                  JOIN opportunity o ON o.opportunity_id = e.opportunity_id
+                 WHERE o.partnership_id = p.partnership_id AND ev.attended = 1) AS hours
         FROM partnership p
         LEFT JOIN organisation asked ON asked.organisation_id = p.organisation_id
         LEFT JOIN organisation partner ON partner.organisation_id = p.partner_id
@@ -42,7 +48,9 @@ include 'includes/app-header.php';
     <h1 class="page-title">Partnerships</h1>
     <p class="page-sub"><?php echo $total; ?> total partnerships on the platform</p>
   </div>
-  <a class="btn-v btn-green" href="partnership-request.php">+ Request Partnership</a>
+  <?php if ($_SESSION['role_id'] == 2 || $_SESSION['role_id'] == 3 || $_SESSION['role_id'] == 6) { ?>
+    <a class="btn-v btn-green" href="partnership-request.php">+ Request Partnership</a>
+  <?php } ?>
 </div>
 
 <div class="d-flex flex-wrap gap-2 mb-4">
@@ -111,12 +119,12 @@ include 'includes/app-header.php';
     </div>
     <p style="font-size:13.5px;color:#6d7880">
       <?php
-      if ($row['reported_impact'] != '') {
-          echo htmlspecialchars($row['reported_impact']);
-      } elseif ($status == 'pending') {
+      if ($status == 'pending') {
           echo 'Pending activation';
+      } elseif ($row['projects'] > 0) {
+          echo $row['projects'] . ' opportunities · ' . $row['hours'] . ' hours verified';
       } else {
-          echo 'No impact reported yet';
+          echo 'No work filed under this agreement yet';
       }
       ?>
     </p>

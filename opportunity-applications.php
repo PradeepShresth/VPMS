@@ -31,6 +31,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $update->execute(array($decision, $_POST['application_id'], $id));
     }
 
+    // if this work is already an event, accepting somebody puts them on its roster
+    if ($decision == 'accepted') {
+        $find = $pdo->prepare('SELECT event_id FROM event WHERE opportunity_id = ? ORDER BY event_id');
+        $find->execute(array($id));
+        $event = $find->fetch();
+
+        $who = $pdo->prepare('SELECT user_id FROM application WHERE application_id = ?');
+        $who->execute(array($_POST['application_id']));
+        $volunteer = $who->fetchColumn();
+
+        if ($event != false) {
+            $check = $pdo->prepare(
+                'SELECT event_volunteer_id FROM event_volunteer WHERE event_id = ? AND user_id = ?'
+            );
+            $check->execute(array($event['event_id'], $volunteer));
+            $already = $check->fetch();
+
+            if ($already == false) {
+                $add = $pdo->prepare(
+                    'INSERT INTO event_volunteer (event_id, user_id, status) VALUES (?, ?, ?)'
+                );
+                $add->execute(array($event['event_id'], $volunteer, 'confirmed'));
+            } else {
+                // they were carried over on the waitlist, so confirm them instead
+                $confirm = $pdo->prepare(
+                    'UPDATE event_volunteer SET status = ? WHERE event_volunteer_id = ?'
+                );
+                $confirm->execute(array('confirmed', $already['event_volunteer_id']));
+            }
+        }
+    }
+
     header('Location: opportunity-applications.php?id=' . $id . '&done=1');
     exit;
 }

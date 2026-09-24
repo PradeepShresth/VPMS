@@ -35,6 +35,19 @@ if ($opportunity_id > 0) {
     }
 }
 
+// who would come across if it were converted right now
+$taken_count = 0;
+$waiting_count = 0;
+
+if ($opportunity != false) {
+    $count = $pdo->prepare('SELECT COUNT(*) FROM application WHERE opportunity_id = ? AND status = ?');
+    $count->execute(array($opportunity_id, 'accepted'));
+    $taken_count = $count->fetchColumn();
+
+    $count->execute(array($opportunity_id, 'pending'));
+    $waiting_count = $count->fetchColumn();
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $title = trim($_POST['title']);
     $location = trim($_POST['location']);
@@ -84,16 +97,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $event_id = $pdo->lastInsertId();
 
         if ($linked != null) {
+            $add = $pdo->prepare(
+                'INSERT INTO event_volunteer (event_id, user_id, status) VALUES (?, ?, ?)'
+            );
+
             // whoever was already accepted for the opportunity goes straight on the roster
             $accepted = $pdo->prepare(
                 'SELECT user_id FROM application WHERE opportunity_id = ? AND status = ?'
             );
             $accepted->execute(array($linked, 'accepted'));
+            $taken = $accepted->fetchAll();
 
-            $add = $pdo->prepare('INSERT INTO event_volunteer (event_id, user_id) VALUES (?, ?)');
+            foreach ($taken as $volunteer) {
+                $add->execute(array($event_id, $volunteer['user_id'], 'confirmed'));
+            }
 
-            foreach ($accepted->fetchAll() as $volunteer) {
-                $add->execute(array($event_id, $volunteer['user_id']));
+            // the ones still waiting on an answer can come along on the waitlist
+            if (isset($_POST['waitlist_pending'])) {
+                $waiting = $pdo->prepare(
+                    'SELECT user_id FROM application WHERE opportunity_id = ? AND status = ?'
+                );
+                $waiting->execute(array($linked, 'pending'));
+
+                foreach ($waiting->fetchAll() as $volunteer) {
+                    $add->execute(array($event_id, $volunteer['user_id'], 'waitlist'));
+                }
+            }
+
+            // closing recruitment you never had would just be a trap, so only
+            // close it once somebody has actually been accepted
+            if (count($taken) > 0) {
+                $close = $pdo->prepare('UPDATE opportunity SET status = ? WHERE opportunity_id = ?');
+                $close->execute(array('closed', $linked));
             }
         }
 
@@ -115,9 +150,20 @@ include 'includes/app-header.php';
     <div class="notice mb-4">
       <p class="notice-title">Converting an opportunity</p>
       <p class="notice-text">
-        Volunteers already accepted for
-        <strong><?php echo htmlspecialchars($opportunity['title']); ?></strong>
-        are added to the roster automatically.
+        <strong><?php echo htmlspecialchars($opportunity['title']); ?></strong> has
+        <?php echo $taken_count; ?> accepted
+        <?php if ($waiting_count > 0) { ?>
+          and <?php echo $waiting_count; ?> still waiting on an answer.
+        <?php } else { ?>
+          and nobody waiting on an answer.
+        <?php } ?>
+      </p>
+      <p class="notice-text">
+        <?php if ($taken_count > 0) { ?>
+          The accepted volunteers go on the roster and the opportunity stops taking applications.
+        <?php } else { ?>
+          Nobody has been accepted yet, so the roster starts empty and the opportunity stays open.
+        <?php } ?>
       </p>
     </div>
   <?php } ?>
@@ -133,6 +179,17 @@ include 'includes/app-header.php';
 
   <form action="event-create.php" method="post">
     <input type="hidden" name="opportunity_id" value="<?php echo $opportunity_id; ?>">
+
+    <?php if ($waiting_count > 0) { ?>
+      <div class="field">
+        <label class="check-v">
+          <input type="checkbox" name="waitlist_pending" checked>
+          Also add the <?php echo $waiting_count; ?> undecided
+          <?php if ($waiting_count == 1) { ?>applicant<?php } else { ?>applicants<?php } ?>
+          to the roster as waitlist
+        </label>
+      </div>
+    <?php } ?>
 
     <div class="field">
       <label class="field-label" for="title">Event Title</label>

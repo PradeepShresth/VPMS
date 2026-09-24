@@ -5,6 +5,12 @@ $active = 'partnerships';
 require 'includes/auth.php';
 require 'config/db.php';
 
+// a partnership is asked for by an organisation, so a volunteer has no business here
+if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 3 && $_SESSION['role_id'] != 6) {
+    header('Location: partnerships.php');
+    exit;
+}
+
 // steps 1 and 2 arrive here in hidden fields, nothing is saved until the end
 $partner_id = isset($_POST['partner_id']) ? $_POST['partner_id'] : 0;
 $type = isset($_POST['type']) ? $_POST['type'] : '';

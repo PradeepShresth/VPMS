@@ -42,6 +42,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $remove->execute(array($_POST['remove'], $id));
     }
 
+    // everyone the coordinator already accepted on the opportunity, in one go
+    if (isset($_POST['add_all'])) {
+        $accepted = $pdo->prepare(
+            'SELECT user_id FROM application WHERE opportunity_id = ? AND status = ?'
+        );
+        $accepted->execute(array($event['opportunity_id'], 'accepted'));
+
+        $check = $pdo->prepare(
+            'SELECT event_volunteer_id FROM event_volunteer WHERE event_id = ? AND user_id = ?'
+        );
+        $add = $pdo->prepare('INSERT INTO event_volunteer (event_id, user_id, status) VALUES (?, ?, ?)');
+
+        foreach ($accepted->fetchAll() as $volunteer) {
+            $check->execute(array($id, $volunteer['user_id']));
+
+            if ($check->fetch() == false) {
+                $add->execute(array($id, $volunteer['user_id'], 'confirmed'));
+            }
+        }
+    }
+
     header('Location: event-volunteers.php?id=' . $id . '&done=1');
     exit;
 }
@@ -69,6 +90,30 @@ if ($event['volunteers_needed'] > 0) {
     $percent = round($joined / $event['volunteers_needed'] * 100);
 } else {
     $percent = 0;
+}
+
+// people who applied to the opportunity but are not on the roster yet
+$applicants = array();
+
+if ($event['opportunity_id'] != '') {
+    $find = $pdo->prepare(
+        'SELECT a.status, u.user_id, u.full_name, u.email
+         FROM application a
+         JOIN `user` u ON u.user_id = a.user_id
+         WHERE a.opportunity_id = ?
+           AND u.user_id NOT IN (SELECT user_id FROM event_volunteer WHERE event_id = ?)
+         ORDER BY a.status, u.full_name'
+    );
+    $find->execute(array($event['opportunity_id'], $id));
+    $applicants = $find->fetchAll();
+}
+
+$waiting_accepted = 0;
+
+foreach ($applicants as $person) {
+    if ($person['status'] == 'accepted') {
+        $waiting_accepted = $waiting_accepted + 1;
+    }
 }
 
 $search = isset($_GET['q']) ? trim($_GET['q']) : '';
@@ -112,6 +157,43 @@ include 'includes/app-header.php';
   </div>
   <div class="bar"><span style="width:<?php echo min($percent, 100); ?>%"></span></div>
 </div>
+
+<?php if (count($applicants) > 0) { ?>
+  <div class="card-v card-v-pad mb-4">
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+      <span class="section-label mb-0">Applied to the opportunity, not on the roster</span>
+      <?php if ($waiting_accepted > 0) { ?>
+        <form class="ms-auto" action="event-volunteers.php?id=<?php echo $id; ?>" method="post">
+          <input type="hidden" name="add_all" value="1">
+          <button class="btn-v btn-green btn-sm-v" type="submit">
+            Add all <?php echo $waiting_accepted; ?> accepted
+          </button>
+        </form>
+      <?php } ?>
+    </div>
+
+    <?php foreach ($applicants as $person) { ?>
+      <div class="d-flex align-items-center gap-3 mb-2">
+        <span class="avatar-circle grey"><?php echo strtoupper(substr($person['full_name'], 0, 1)); ?></span>
+        <span class="flex-grow-1">
+          <span class="d-block fw-bold"><?php echo htmlspecialchars($person['full_name']); ?></span>
+          <span class="d-block" style="font-size:12.5px;color:#6d7880"><?php echo htmlspecialchars($person['email']); ?></span>
+        </span>
+        <?php if ($person['status'] == 'accepted') { ?>
+          <span class="badge-v badge-green">Accepted</span>
+        <?php } elseif ($person['status'] == 'pending') { ?>
+          <span class="badge-v badge-pending">Undecided</span>
+        <?php } else { ?>
+          <span class="badge-v badge-grey">Rejected</span>
+        <?php } ?>
+        <form action="event-volunteers.php?id=<?php echo $id; ?>" method="post">
+          <input type="hidden" name="add" value="<?php echo $person['user_id']; ?>">
+          <button class="btn-v btn-outline btn-sm-v" type="submit">+ Add</button>
+        </form>
+      </div>
+    <?php } ?>
+  </div>
+<?php } ?>
 
 <div class="card-v card-v-pad mb-4">
   <p class="section-label">Add a volunteer</p>

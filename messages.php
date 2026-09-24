@@ -188,10 +188,12 @@ include 'includes/app-header.php';
     </div>
   <?php } ?>
 
-  <a class="btn-v btn-block card-v" href="announcement-new.php"
-     style="padding:16px;background:#fbfaf8;color:#16663e;font-weight:500">
-    + New Announcement
-  </a>
+  <?php if ($_SESSION['role_id'] == 2 || $_SESSION['role_id'] == 3 || $_SESSION['role_id'] == 6) { ?>
+    <a class="btn-v btn-block card-v" href="announcement-new.php"
+       style="padding:16px;background:#fbfaf8;color:#16663e;font-weight:500">
+      + New Announcement
+    </a>
+  <?php } ?>
 </div>
 
 <div id="messages" style="display:none">

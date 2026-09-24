@@ -5,6 +5,12 @@ $active = 'opportunities';
 require 'includes/auth.php';
 require 'config/db.php';
 
+// applying is what the Volunteer role is for
+if ($_SESSION['role_id'] != 1) {
+    header('Location: opportunities.php');
+    exit;
+}
+
 $id = isset($_GET['id']) ? $_GET['id'] : 0;
 
 $find = $pdo->prepare(

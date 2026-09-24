@@ -4,6 +4,11 @@
 require 'includes/auth.php';
 require 'config/db.php';
 
+if ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4) {
+    header('Location: dashboard.php');
+    exit;
+}
+
 $id = isset($_GET['id']) ? $_GET['id'] : 0;
 
 $find = $pdo->prepare('SELECT * FROM report WHERE report_id = ?');
@@ -51,10 +56,23 @@ if ($report['report_type'] == 'Volunteer Activity Report') {
 
 } elseif ($report['report_type'] == 'Partnership Performance Report'
        || $report['report_type'] == 'Sponsor Contribution Report') {
-    fputcsv($out, array('Organisation', 'Partner', 'Type', 'Start', 'End', 'SDG goals', 'Status', 'Reported impact'));
+    fputcsv($out, array('Organisation', 'Partner', 'Type', 'Start', 'End', 'SDG goals', 'Status',
+                        'Opportunities', 'Events', 'Volunteers', 'Hours verified', 'Notes'));
 
     $rows = $pdo->query(
-        'SELECT p.*, asked.name AS asked_by, partner.name AS partner_name
+        'SELECT p.*, asked.name AS asked_by, partner.name AS partner_name,
+                (SELECT COUNT(*) FROM opportunity o WHERE o.partnership_id = p.partnership_id) AS projects,
+                (SELECT COUNT(*) FROM event e
+                   JOIN opportunity o ON o.opportunity_id = e.opportunity_id
+                  WHERE o.partnership_id = p.partnership_id) AS events,
+                (SELECT COUNT(DISTINCT ev.user_id) FROM event_volunteer ev
+                   JOIN event e ON e.event_id = ev.event_id
+                   JOIN opportunity o ON o.opportunity_id = e.opportunity_id
+                  WHERE o.partnership_id = p.partnership_id AND ev.attended = 1) AS volunteers,
+                (SELECT COALESCE(SUM(ev.hours_logged), 0) FROM event_volunteer ev
+                   JOIN event e ON e.event_id = ev.event_id
+                   JOIN opportunity o ON o.opportunity_id = e.opportunity_id
+                  WHERE o.partnership_id = p.partnership_id AND ev.attended = 1) AS hours
          FROM partnership p
          LEFT JOIN organisation asked ON asked.organisation_id = p.organisation_id
          LEFT JOIN organisation partner ON partner.organisation_id = p.partner_id
@@ -63,8 +81,9 @@ if ($report['report_type'] == 'Volunteer Activity Report') {
 
     foreach ($rows->fetchAll() as $row) {
         fputcsv($out, array($row['asked_by'], $row['partner_name'], $row['type'],
-                            $row['start_date'], $row['end_date'], $row['sdg_goals'],
-                            $row['status'], $row['reported_impact']));
+                            $row['start_date'], $row['end_date'], $row['sdg_goals'], $row['status'],
+                            $row['projects'], $row['events'], $row['volunteers'], $row['hours'],
+                            $row['reported_impact']));
     }
 
 } elseif ($report['report_type'] == 'SDG Contribution Summary') {

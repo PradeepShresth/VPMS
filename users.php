@@ -1,6 +1,6 @@
 <?php
 $page_title = 'Users | VPMS';
-$active = 'organisations';
+$active = 'users';
 
 require 'includes/auth.php';
 require 'config/db.php';

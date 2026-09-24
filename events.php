@@ -96,7 +96,7 @@ include 'includes/app-header.php';
         <a class="card-v card-v-pad d-block" href="event-details.php?id=<?php echo $row['event_id']; ?>">
           <div class="d-flex align-items-center gap-2 mb-3">
             <span class="chip"><?php echo htmlspecialchars($row['category']); ?></span>
-            <span class="badge-v badge-navy ms-auto">Ongoing</span>
+            <span class="badge-v badge-green ms-auto">Ongoing</span>
           </div>
           <h2 class="row-title mb-1" style="font-size:16px"><?php echo htmlspecialchars($row['title']); ?></h2>
           <p class="row-meta mb-3" style="color:#16663e">

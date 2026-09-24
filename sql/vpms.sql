@@ -71,10 +71,31 @@ CREATE TABLE `user` (
 );
 
 
+CREATE TABLE partnership (
+  partnership_id  INT AUTO_INCREMENT PRIMARY KEY,
+  organisation_id INT,
+  partner_id      INT,
+  type            VARCHAR(60),
+  start_date      DATE,
+  end_date        DATE,
+  sdg_goals       VARCHAR(60),
+  objectives      TEXT,
+  expected_impact TEXT,
+  reported_impact VARCHAR(255),
+  status          VARCHAR(20) NOT NULL DEFAULT 'pending',   -- pending, active, expired or rejected
+  requested_by    INT NOT NULL,
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (organisation_id) REFERENCES organisation(organisation_id),
+  FOREIGN KEY (partner_id) REFERENCES organisation(organisation_id),
+  FOREIGN KEY (requested_by) REFERENCES `user`(user_id)
+);
+
+
 CREATE TABLE opportunity (
   opportunity_id   INT AUTO_INCREMENT PRIMARY KEY,
   title            VARCHAR(150) NOT NULL,
   organisation_id  INT,
+  partnership_id   INT,                                      -- set when it runs under an agreement
   created_by       INT NOT NULL,
   location         VARCHAR(150),
   opportunity_date DATE,
@@ -87,6 +108,7 @@ CREATE TABLE opportunity (
   status           VARCHAR(20) NOT NULL DEFAULT 'open',      -- open or closed
   created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (organisation_id) REFERENCES organisation(organisation_id),
+  FOREIGN KEY (partnership_id) REFERENCES partnership(partnership_id),
   FOREIGN KEY (created_by) REFERENCES `user`(user_id)
 );
 
@@ -137,26 +159,6 @@ CREATE TABLE event_volunteer (
   created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (event_id) REFERENCES event(event_id),
   FOREIGN KEY (user_id) REFERENCES `user`(user_id)
-);
-
-
-CREATE TABLE partnership (
-  partnership_id  INT AUTO_INCREMENT PRIMARY KEY,
-  organisation_id INT,
-  partner_id      INT,
-  type            VARCHAR(60),
-  start_date      DATE,
-  end_date        DATE,
-  sdg_goals       VARCHAR(60),
-  objectives      TEXT,
-  expected_impact TEXT,
-  reported_impact VARCHAR(255),
-  status          VARCHAR(20) NOT NULL DEFAULT 'pending',   -- pending, active, expired or rejected
-  requested_by    INT NOT NULL,
-  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (organisation_id) REFERENCES organisation(organisation_id),
-  FOREIGN KEY (partner_id) REFERENCES organisation(organisation_id),
-  FOREIGN KEY (requested_by) REFERENCES `user`(user_id)
 );
 
 

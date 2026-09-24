@@ -12,13 +12,15 @@ $sql = 'SELECT o.opportunity_id, o.title, o.location, o.opportunity_date, o.hour
                o.spots, o.category, o.skills, o.status,
                org.name AS organisation, u.organisation_name,
                (SELECT COUNT(*) FROM application a
-                 WHERE a.opportunity_id = o.opportunity_id AND a.status = \'accepted\') AS filled
+                 WHERE a.opportunity_id = o.opportunity_id AND a.status = \'accepted\') AS filled,
+               (SELECT mine.status FROM application mine
+                 WHERE mine.opportunity_id = o.opportunity_id AND mine.user_id = ?) AS my_status
         FROM opportunity o
         LEFT JOIN organisation org ON org.organisation_id = o.organisation_id
         LEFT JOIN `user` u ON u.user_id = o.created_by
         WHERE 1 = 1';
 // the search box and the pills each add a bit onto the query
-$values = array();
+$values = array($_SESSION['user_id']);
 
 if ($search != '') {
     $sql = $sql . ' AND (o.title LIKE ? OR o.location LIKE ?)';
@@ -122,10 +124,16 @@ include 'includes/app-header.php';
       <a class="card-v card-v-pad d-block h-100" href="opportunity-details.php?id=<?php echo $row['opportunity_id']; ?>">
         <div class="d-flex align-items-center gap-2 mb-3">
           <span class="chip"><?php echo htmlspecialchars($row['category']); ?></span>
-          <?php if ($row['status'] == 'open') { ?>
+          <?php if ($row['my_status'] == 'pending') { ?>
+            <span class="badge-v badge-pending ms-auto">Applied</span>
+          <?php } elseif ($row['my_status'] == 'accepted') { ?>
+            <span class="badge-v badge-green ms-auto">Accepted</span>
+          <?php } elseif ($row['my_status'] == 'rejected') { ?>
+            <span class="badge-v badge-grey ms-auto">Not selected</span>
+          <?php } elseif ($row['status'] == 'open') { ?>
             <span class="badge-v badge-navy ms-auto">Open</span>
           <?php } else { ?>
-            <span class="badge-v badge-grey ms-auto">Closed</span>
+            <span class="badge-v badge-red ms-auto">Closed</span>
           <?php } ?>
         </div>
 

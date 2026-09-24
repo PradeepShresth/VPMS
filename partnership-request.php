@@ -5,6 +5,12 @@ $active = 'partnerships';
 require 'includes/auth.php';
 require 'config/db.php';
 
+// a partnership is asked for by an organisation, so a volunteer has no business here
+if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 3 && $_SESSION['role_id'] != 6) {
+    header('Location: partnerships.php');
+    exit;
+}
+
 $my_organisation = $_SESSION['organisation_id'];
 
 if ($my_organisation != '') {

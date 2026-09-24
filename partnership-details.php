@@ -60,6 +60,45 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
+// what the agreement has actually produced, counted from the work filed under it
+$count = $pdo->prepare('SELECT COUNT(*) FROM opportunity WHERE partnership_id = ?');
+$count->execute(array($id));
+$opportunities = $count->fetchColumn();
+
+$count = $pdo->prepare(
+    'SELECT COUNT(*) FROM event e
+      JOIN opportunity o ON o.opportunity_id = e.opportunity_id
+      WHERE o.partnership_id = ?'
+);
+$count->execute(array($id));
+$events = $count->fetchColumn();
+
+$count = $pdo->prepare(
+    'SELECT COUNT(DISTINCT ev.user_id) FROM event_volunteer ev
+      JOIN event e ON e.event_id = ev.event_id
+      JOIN opportunity o ON o.opportunity_id = e.opportunity_id
+      WHERE o.partnership_id = ? AND ev.attended = 1'
+);
+$count->execute(array($id));
+$volunteers = $count->fetchColumn();
+
+$count = $pdo->prepare(
+    'SELECT COALESCE(SUM(ev.hours_logged), 0) FROM event_volunteer ev
+      JOIN event e ON e.event_id = ev.event_id
+      JOIN opportunity o ON o.opportunity_id = e.opportunity_id
+      WHERE o.partnership_id = ? AND ev.attended = 1'
+);
+$count->execute(array($id));
+$hours = $count->fetchColumn();
+
+// the opportunities themselves, to list under the numbers
+$find = $pdo->prepare(
+    'SELECT opportunity_id, title, opportunity_date, status
+     FROM opportunity WHERE partnership_id = ? ORDER BY opportunity_date DESC'
+);
+$find->execute(array($id));
+$work = $find->fetchAll();
+
 $today = date('Y-m-d');
 $status = $partnership['status'];
 
@@ -154,17 +193,72 @@ include 'includes/app-header.php';
     </p>
   <?php } ?>
 
+  <p class="section-label">Delivered under this partnership</p>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <span class="stat-value"><?php echo $opportunities; ?></span>
+        <span class="stat-label">Opportunities</span>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <span class="stat-value"><?php echo $events; ?></span>
+        <span class="stat-label">Events Held</span>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <span class="stat-value"><?php echo $volunteers; ?></span>
+        <span class="stat-label">Volunteers Mobilised</span>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <span class="stat-value"><?php echo $hours; ?></span>
+        <span class="stat-label">Hours Verified</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="list-card mb-4">
+    <?php if (count($work) == 0) { ?>
+      <div class="list-row">
+        <span style="font-size:14px;color:#6d7880">
+          No opportunities have been filed under this partnership yet. Pick it in the
+          "Run under a partnership" box when posting one.
+        </span>
+      </div>
+    <?php } ?>
+
+    <?php foreach ($work as $row) { ?>
+      <a class="list-row" href="opportunity-details.php?id=<?php echo $row['opportunity_id']; ?>">
+        <span class="row-icon"><i class="bi bi-diamond"></i></span>
+        <span class="flex-grow-1 min-w-0">
+          <span class="row-title d-block"><?php echo htmlspecialchars($row['title']); ?></span>
+          <span class="row-meta mono d-block"><?php echo date('j M Y', strtotime($row['opportunity_date'])); ?></span>
+        </span>
+        <?php if ($row['status'] == 'open') { ?>
+          <span class="badge-v badge-navy">Open</span>
+        <?php } else { ?>
+          <span class="badge-v badge-grey">Closed</span>
+        <?php } ?>
+      </a>
+    <?php } ?>
+  </div>
+
   <div class="card-v card-v-pad mb-4">
-    <p class="section-label">Reported Impact</p>
+    <p class="section-label">Notes from the partners</p>
 
     <?php if ($is_admin || $is_party) { ?>
       <form action="partnership-details.php?id=<?php echo $id; ?>" method="post">
         <div class="field mb-3">
           <input class="input-v" type="text" name="reported"
-                 placeholder="e.g. 3,200 trees planted, 450 volunteers mobilised"
+                 placeholder="Anything the numbers above do not capture"
                  value="<?php echo htmlspecialchars($partnership['reported_impact']); ?>">
         </div>
-        <button class="btn-v btn-soft btn-sm-v" type="submit">Save Reported Impact</button>
+        <button class="btn-v btn-soft btn-sm-v" type="submit">Save Note</button>
       </form>
     <?php } else { ?>
       <p style="font-size:14px;color:#6d7880">
@@ -172,7 +266,7 @@ include 'includes/app-header.php';
         if ($partnership['reported_impact'] != '') {
             echo htmlspecialchars($partnership['reported_impact']);
         } else {
-            echo 'Nothing reported yet.';
+            echo 'No notes added.';
         }
         ?>
       </p>

@@ -8,6 +8,9 @@ if (session_status() == PHP_SESSION_NONE) {
 $user_name = isset($_SESSION['full_name']) ? $_SESSION['full_name'] : 'Pradeep Shrestha';
 $user_role = isset($_SESSION['role_name']) ? $_SESSION['role_name'] : 'System Administrator';
 
+// the Administration links below are only for the roles that can use them
+$my_role = isset($_SESSION['role_id']) ? $_SESSION['role_id'] : 0;
+
 // first letter of the first two words, e.g. "Aruna Tamang" -> "AT"
 $name_parts = explode(' ', $user_name);
 $user_initials = strtoupper(substr($name_parts[0], 0, 1));
@@ -25,7 +28,7 @@ if (isset($name_parts[1])) {
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link href="assets/css/app.css" rel="stylesheet">
+  <link href="assets/css/app.css?v=8" rel="stylesheet">
 </head>
 <body>
 
@@ -67,6 +70,20 @@ if (isset($name_parts[1])) {
     <a class="side-link <?php if ($active == 'impact') echo 'active'; ?>" href="impact.php">
       <i class="bi bi-circle-half"></i> SDG 17 Impact
     </a>
+
+    <?php if ($my_role == 2 || $my_role == 3 || $my_role == 6) { ?>
+      <span class="side-heading">Administration</span>
+
+      <a class="side-link <?php if ($active == 'applications') echo 'active'; ?>" href="applications-review.php">
+        <i class="bi bi-inbox"></i> Review Applications
+      </a>
+
+      <?php if ($my_role == 6) { ?>
+        <a class="side-link <?php if ($active == 'users') echo 'active'; ?>" href="users.php">
+          <i class="bi bi-people"></i> Users
+        </a>
+      <?php } ?>
+    <?php } ?>
   </div>
 
   <div class="sidebar-bottom">

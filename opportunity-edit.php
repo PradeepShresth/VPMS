@@ -21,6 +21,31 @@ if ($opportunity['created_by'] != $_SESSION['user_id'] && $_SESSION['role_id'] !
     exit;
 }
 
+// active agreements this organisation is part of
+if ($_SESSION['role_id'] == 6) {
+    $find = $pdo->prepare(
+        'SELECT p.partnership_id, a.name AS asked_by, b.name AS partner_name
+         FROM partnership p
+         LEFT JOIN organisation a ON a.organisation_id = p.organisation_id
+         LEFT JOIN organisation b ON b.organisation_id = p.partner_id
+         WHERE p.status = ?
+         ORDER BY a.name'
+    );
+    $find->execute(array('active'));
+} else {
+    $find = $pdo->prepare(
+        'SELECT p.partnership_id, a.name AS asked_by, b.name AS partner_name
+         FROM partnership p
+         LEFT JOIN organisation a ON a.organisation_id = p.organisation_id
+         LEFT JOIN organisation b ON b.organisation_id = p.partner_id
+         WHERE p.status = ? AND (p.organisation_id = ? OR p.partner_id = ?)
+         ORDER BY a.name'
+    );
+    $find->execute(array('active', $_SESSION['organisation_id'], $_SESSION['organisation_id']));
+}
+
+$partnerships = $find->fetchAll();
+
 $errors = array();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete'])) {
@@ -48,6 +73,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $opportunity['status'] = $_POST['status'];
     $opportunity['description'] = trim($_POST['description']);
 
+    if ($_POST['partnership_id'] > 0) {
+        $opportunity['partnership_id'] = $_POST['partnership_id'];
+    } else {
+        $opportunity['partnership_id'] = null;
+    }
+
     if (isset($_POST['skills'])) {
         $opportunity['skills'] = implode(', ', $_POST['skills']);
     } else {
@@ -72,7 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $save = $pdo->prepare(
             'UPDATE opportunity
                 SET title = ?, location = ?, opportunity_date = ?, hours_required = ?, spots = ?,
-                    category = ?, skills = ?, sdg_goals = ?, description = ?, status = ?
+                    category = ?, skills = ?, sdg_goals = ?, description = ?, status = ?,
+                    partnership_id = ?
               WHERE opportunity_id = ?'
         );
 
@@ -87,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $opportunity['sdg_goals'],
             $opportunity['description'],
             $opportunity['status'],
+            $opportunity['partnership_id'],
             $id
         ));
 
@@ -181,6 +214,19 @@ include 'includes/app-header.php';
       <select class="select-v" id="status" name="status">
         <option value="open" <?php if ($opportunity['status'] == 'open') echo 'selected'; ?>>Open for applications</option>
         <option value="closed" <?php if ($opportunity['status'] == 'closed') echo 'selected'; ?>>Closed</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="partnership_id">Run under a partnership</label>
+      <select class="select-v" id="partnership_id" name="partnership_id">
+        <option value="0">Not part of a partnership</option>
+        <?php foreach ($partnerships as $row) { ?>
+          <option value="<?php echo $row['partnership_id']; ?>"
+            <?php if ($opportunity['partnership_id'] == $row['partnership_id']) echo 'selected'; ?>>
+            <?php echo htmlspecialchars($row['asked_by']); ?> &amp; <?php echo htmlspecialchars($row['partner_name']); ?>
+          </option>
+        <?php } ?>
       </select>
     </div>
 

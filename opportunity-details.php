@@ -7,10 +7,14 @@ require 'config/db.php';
 $id = isset($_GET['id']) ? $_GET['id'] : 0;
 
 $find = $pdo->prepare(
-    'SELECT o.*, org.name AS organisation, u.organisation_name
+    'SELECT o.*, org.name AS organisation, u.organisation_name,
+            a.name AS partner_one, b.name AS partner_two
      FROM opportunity o
      LEFT JOIN organisation org ON org.organisation_id = o.organisation_id
      LEFT JOIN `user` u ON u.user_id = o.created_by
+     LEFT JOIN partnership p ON p.partnership_id = o.partnership_id
+     LEFT JOIN organisation a ON a.organisation_id = p.organisation_id
+     LEFT JOIN organisation b ON b.organisation_id = p.partner_id
      WHERE o.opportunity_id = ?'
 );
 $find->execute(array($id));
@@ -49,11 +53,28 @@ if ($remaining < 0) {
 
 $is_owner = ($opportunity['created_by'] == $_SESSION['user_id'] || $_SESSION['role_id'] == 6);
 
+// applications nobody ever decided on, which closing would otherwise bury
+$count = $pdo->prepare('SELECT COUNT(*) FROM application WHERE opportunity_id = ? AND status = ?');
+$count->execute(array($id, 'pending'));
+$undecided = $count->fetchColumn();
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reopen']) && $is_owner) {
+    $open = $pdo->prepare('UPDATE opportunity SET status = ? WHERE opportunity_id = ?');
+    $open->execute(array('open', $id));
+
+    header('Location: opportunity-details.php?id=' . $id . '&reopened=1');
+    exit;
+}
+
 $volunteer_view = !$is_owner;
 
 if (isset($_GET['view'])) {
     $volunteer_view = ($_GET['view'] == 'volunteer');
 }
+
+$count = $pdo->prepare('SELECT COUNT(*) FROM event WHERE opportunity_id = ?');
+$count->execute(array($id));
+$converted = $count->fetchColumn();
 
 $mine = $pdo->prepare('SELECT status FROM application WHERE opportunity_id = ? AND user_id = ?');
 $mine->execute(array($id, $_SESSION['user_id']));
@@ -74,14 +95,22 @@ include 'includes/app-header.php';
 
   <?php if (isset($_GET['saved'])) { ?>
     <div class="banner"><i class="bi bi-check-circle-fill"></i>Opportunity updated.</div>
+  <?php } elseif (isset($_GET['reopened'])) { ?>
+    <div class="banner"><i class="bi bi-check-circle-fill"></i>Opportunity reopened. Volunteers can apply again.</div>
   <?php } ?>
 
   <div class="d-flex align-items-start gap-3 mb-1">
     <h1 class="page-title flex-grow-1"><?php echo htmlspecialchars($opportunity['title']); ?></h1>
-    <?php if ($opportunity['status'] == 'open') { ?>
+    <?php if ($my_application != false && $my_application['status'] == 'pending') { ?>
+      <span class="badge-v badge-pending mt-2">Applied</span>
+    <?php } elseif ($my_application != false && $my_application['status'] == 'accepted') { ?>
+      <span class="badge-v badge-green mt-2">Accepted</span>
+    <?php } elseif ($my_application != false) { ?>
+      <span class="badge-v badge-grey mt-2">Not selected</span>
+    <?php } elseif ($opportunity['status'] == 'open') { ?>
       <span class="badge-v badge-navy mt-2">Open</span>
     <?php } else { ?>
-      <span class="badge-v badge-grey mt-2">Closed</span>
+      <span class="badge-v badge-red mt-2">Closed</span>
     <?php } ?>
   </div>
 
@@ -96,7 +125,11 @@ include 'includes/app-header.php';
           <a class="link-green" style="font-size:14px" href="opportunity-details.php?id=<?php echo $id; ?>">View as coordinator</a>
         <?php } else { ?>
           <a class="link-green" style="font-size:14px" href="opportunity-details.php?id=<?php echo $id; ?>&view=volunteer">View as volunteer</a>
-          <a class="link-green" style="font-size:14px" href="event-create.php?opportunity_id=<?php echo $id; ?>">Convert into an Event</a>
+          <?php if ($converted > 0) { ?>
+            <span style="font-size:14px;color:#98a2aa">Already an event</span>
+          <?php } else { ?>
+            <a class="link-green" style="font-size:14px" href="event-create.php?opportunity_id=<?php echo $id; ?>">Convert into an Event</a>
+          <?php } ?>
         <?php } ?>
       </span>
     <?php } ?>
@@ -135,6 +168,18 @@ include 'includes/app-header.php';
       <?php echo $remaining; ?> spots remaining · <?php echo $applications; ?> applications received
     </p>
   </div>
+
+  <?php if ($opportunity['partnership_id'] != '') { ?>
+    <a class="card-v card-v-pad d-block mb-4" href="partnership-details.php?id=<?php echo $opportunity['partnership_id']; ?>">
+      <p class="section-label mb-1">Part of a partnership</p>
+      <p style="font-size:14.5px;font-weight:600">
+        <?php echo htmlspecialchars($opportunity['partner_one']); ?>
+        <i class="bi bi-arrow-left-right mx-2" style="color:#16663e;font-size:13px"></i>
+        <?php echo htmlspecialchars($opportunity['partner_two']); ?>
+      </p>
+      <p style="font-size:13px;color:#6d7880">Hours logged here count towards this agreement.</p>
+    </a>
+  <?php } ?>
 
   <p class="section-label">About this Opportunity</p>
   <p class="mb-4" style="color:#48545e;font-size:14.5px;line-height:1.7">
@@ -175,6 +220,20 @@ include 'includes/app-header.php';
     </div>
   <?php } ?>
 
+  <?php if ($is_owner && !$volunteer_view && $opportunity['status'] != 'open' && $undecided > 0) { ?>
+    <div class="notice mb-4" style="border-left-color:#c8504b;background:#fdf3f2">
+      <p class="notice-title" style="color:#c8504b">
+        <?php echo $undecided; ?>
+        <?php if ($undecided == 1) { ?>application was<?php } else { ?>applications were<?php } ?>
+        never decided
+      </p>
+      <p class="notice-text">
+        This opportunity is closed, but those volunteers are still waiting on an answer.
+        <a class="link-green" href="opportunity-applications.php?id=<?php echo $id; ?>&show=pending">Review them now</a>.
+      </p>
+    </div>
+  <?php } ?>
+
   <div class="row g-3">
     <?php if ($volunteer_view) { ?>
 
@@ -197,6 +256,15 @@ include 'includes/app-header.php';
             <p class="notice-text">This opportunity is no longer accepting volunteers.</p>
           </div>
         </div>
+      <?php } elseif ($_SESSION['role_id'] != 1) { ?>
+        <div class="col-12">
+          <div class="notice">
+            <p class="notice-title">Only volunteer accounts can apply</p>
+            <p class="notice-text">
+              You are signed in as <?php echo htmlspecialchars($_SESSION['role_name']); ?>.
+            </p>
+          </div>
+        </div>
       <?php } else { ?>
         <div class="col-sm-6">
           <a class="btn-v btn-green btn-block" href="opportunity-apply.php?id=<?php echo $id; ?>">Apply Now</a>
@@ -208,7 +276,8 @@ include 'includes/app-header.php';
         </div>
       <?php } ?>
 
-    <?php } else { ?>
+    <?php } elseif ($opportunity['status'] == 'open') { ?>
+
       <div class="col-sm-6">
         <a class="btn-v btn-green btn-block" href="opportunity-edit.php?id=<?php echo $id; ?>">Edit Opportunity</a>
       </div>
@@ -217,6 +286,25 @@ include 'includes/app-header.php';
           Manage Applications (<?php echo $applications; ?>)
         </a>
       </div>
+
+    <?php } else { ?>
+
+      <!-- nothing here is the main action any more, so reopening leads -->
+      <div class="col-sm-4">
+        <form action="opportunity-details.php?id=<?php echo $id; ?>" method="post">
+          <input type="hidden" name="reopen" value="1">
+          <button class="btn-v btn-green btn-block" type="submit">Reopen Opportunity</button>
+        </form>
+      </div>
+      <div class="col-sm-4">
+        <a class="btn-v btn-outline btn-block" href="opportunity-edit.php?id=<?php echo $id; ?>">Edit Opportunity</a>
+      </div>
+      <div class="col-sm-4">
+        <a class="btn-v btn-outline btn-block" href="opportunity-applications.php?id=<?php echo $id; ?>">
+          Manage Applications (<?php echo $applications; ?>)
+        </a>
+      </div>
+
     <?php } ?>
   </div>
 

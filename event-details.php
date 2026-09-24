@@ -7,10 +7,14 @@ require 'config/db.php';
 $id = isset($_GET['id']) ? $_GET['id'] : 0;
 
 $find = $pdo->prepare(
-    'SELECT e.*, org.name AS organisation, u.organisation_name
+    'SELECT e.*, org.name AS organisation, u.organisation_name,
+            o.title AS opportunity_title, o.description AS opportunity_description,
+            o.skills AS opportunity_skills, o.sdg_goals AS opportunity_goals,
+            o.hours_required
      FROM event e
      LEFT JOIN organisation org ON org.organisation_id = e.organisation_id
      LEFT JOIN `user` u ON u.user_id = e.created_by
+     LEFT JOIN opportunity o ON o.opportunity_id = e.opportunity_id
      WHERE e.event_id = ?'
 );
 $find->execute(array($id));
@@ -22,6 +26,31 @@ if ($event == false) {
 }
 
 $page_title = $event['title'] . ' | VPMS';
+
+// hours already logged here feed the partnership and SDG totals, so the event
+// cannot simply be thrown away once attendance has been taken
+$count = $pdo->prepare('SELECT COUNT(*) FROM event_volunteer WHERE event_id = ? AND attended = 1');
+$count->execute(array($id));
+$marked_present = $count->fetchColumn();
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete'])) {
+
+    if ($event['created_by'] == $_SESSION['user_id'] || $_SESSION['role_id'] == 6) {
+        if ($marked_present == 0) {
+            $clear = $pdo->prepare('DELETE FROM event_volunteer WHERE event_id = ?');
+            $clear->execute(array($id));
+
+            $remove = $pdo->prepare('DELETE FROM event WHERE event_id = ?');
+            $remove->execute(array($id));
+
+            header('Location: events.php?deleted=1');
+            exit;
+        }
+    }
+
+    header('Location: event-details.php?id=' . $id);
+    exit;
+}
 
 $list = $pdo->prepare(
     'SELECT ev.status, ev.attended, u.full_name
@@ -79,7 +108,7 @@ include 'includes/app-header.php';
   <div class="d-flex align-items-start gap-3 mb-1">
     <h1 class="page-title flex-grow-1"><?php echo htmlspecialchars($event['title']); ?></h1>
     <?php if ($when == 'Ongoing') { ?>
-      <span class="badge-v badge-navy mt-2">Ongoing</span>
+      <span class="badge-v badge-green mt-2">Ongoing</span>
     <?php } elseif ($when == 'Upcoming') { ?>
       <span class="badge-v badge-blue mt-2">Upcoming</span>
     <?php } else { ?>
@@ -111,6 +140,57 @@ include 'includes/app-header.php';
       </div>
     </div>
   </div>
+
+  <?php if ($event['opportunity_id'] != '') { ?>
+
+    <a class="card-v card-v-pad d-block mb-4" href="opportunity-details.php?id=<?php echo $event['opportunity_id']; ?>">
+      <p class="section-label mb-1">From the opportunity</p>
+      <p style="font-size:14.5px;font-weight:600">
+        <?php echo htmlspecialchars($event['opportunity_title']); ?>
+        &nbsp;·&nbsp; <?php echo $event['hours_required']; ?> hrs
+      </p>
+    </a>
+
+    <p class="section-label">About this Work</p>
+    <p class="mb-4" style="color:#48545e;font-size:14.5px;line-height:1.7">
+      <?php
+      if ($event['opportunity_description'] != '') {
+          echo nl2br(htmlspecialchars($event['opportunity_description']));
+      } else {
+          echo 'No description was added on the opportunity.';
+      }
+      ?>
+    </p>
+
+    <?php if ($event['opportunity_skills'] != '') { ?>
+      <p class="section-label">Skills Required</p>
+      <div class="d-flex flex-wrap gap-2 mb-4">
+        <?php
+        $skills = explode(',', $event['opportunity_skills']);
+        foreach ($skills as $skill) {
+            $skill = trim($skill);
+            if ($skill != '') { ?>
+              <span class="chip"><?php echo htmlspecialchars($skill); ?></span>
+        <?php }
+        } ?>
+      </div>
+    <?php } ?>
+
+    <?php if ($event['opportunity_goals'] != '') { ?>
+      <p class="section-label">SDG Goals</p>
+      <div class="d-flex flex-wrap gap-2 mb-4">
+        <?php
+        $goals = explode(',', $event['opportunity_goals']);
+        foreach ($goals as $goal) {
+            $goal = trim($goal);
+            if ($goal != '') { ?>
+              <span class="chip chip-mono">SDG <?php echo htmlspecialchars($goal); ?></span>
+        <?php }
+        } ?>
+      </div>
+    <?php } ?>
+
+  <?php } ?>
 
   <div class="card-v card-v-pad mb-4">
     <div class="d-flex align-items-center mb-2">
@@ -147,6 +227,37 @@ include 'includes/app-header.php';
         <a class="btn-v btn-soft btn-block" href="event-volunteers.php?id=<?php echo $id; ?>">Manage Volunteers</a>
       </div>
     </div>
+  <?php } ?>
+
+  <?php if ($event['created_by'] == $_SESSION['user_id'] || $_SESSION['role_id'] == 6) { ?>
+    <div class="row g-3 mt-1">
+      <div class="col-sm-6">
+        <a class="btn-v btn-outline btn-block" href="event-edit.php?id=<?php echo $id; ?>">Edit Event</a>
+      </div>
+      <div class="col-sm-6">
+        <?php if ($marked_present == 0) { ?>
+          <form action="event-details.php?id=<?php echo $id; ?>" method="post"
+                onsubmit="return confirm('Delete this event and its roster?')">
+            <input type="hidden" name="delete" value="1">
+            <button class="btn-v btn-outline btn-block" type="submit">Delete Event</button>
+          </form>
+        <?php } else { ?>
+          <span class="btn-v btn-block" style="color:#98a2aa;border:1px solid #e9e5dd;cursor:not-allowed">
+            Delete Event
+          </span>
+        <?php } ?>
+      </div>
+    </div>
+
+    <?php if ($marked_present > 0) { ?>
+      <p class="mt-3" style="font-size:13px;color:#6d7880">
+        This event cannot be deleted because attendance has been recorded for
+        <?php echo $marked_present; ?>
+        <?php if ($marked_present == 1) { ?>volunteer<?php } else { ?>volunteers<?php } ?>.
+        Those hours count towards the partnership totals and the volunteers' own records, so the
+        event stays as part of the history.
+      </p>
+    <?php } ?>
   <?php } ?>
 
 </div>

@@ -5,6 +5,12 @@ $active = 'reports';
 require 'includes/auth.php';
 require 'config/db.php';
 
+// only the roles that answer to partners and donors can pull reports
+if ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4) {
+    header('Location: dashboard.php');
+    exit;
+}
+
 $find = $pdo->query('SELECT organisation_id, name FROM organisation ORDER BY name');
 $organisations = $find->fetchAll();
 

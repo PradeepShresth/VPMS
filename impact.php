@@ -29,11 +29,16 @@ $partnerships = $count->fetchColumn();
 // one opportunity can list a few goals, so count each number separately
 $projects_for_goal = array();
 $volunteers_for_goal = array();
+$hours_for_goal = array();
 
 $find = $pdo->query(
     'SELECT o.sdg_goals,
             (SELECT COUNT(*) FROM application a
-              WHERE a.opportunity_id = o.opportunity_id AND a.status = \'accepted\') AS accepted
+              WHERE a.opportunity_id = o.opportunity_id AND a.status = \'accepted\') AS accepted,
+            (SELECT COALESCE(SUM(ev.hours_logged), 0)
+               FROM event_volunteer ev
+               JOIN event e ON e.event_id = ev.event_id
+              WHERE e.opportunity_id = o.opportunity_id AND ev.attended = 1) AS hours
      FROM opportunity o
      WHERE o.sdg_goals != \'\''
 );
@@ -46,10 +51,12 @@ foreach ($find->fetchAll() as $row) {
             if (!isset($projects_for_goal[$goal])) {
                 $projects_for_goal[$goal] = 0;
                 $volunteers_for_goal[$goal] = 0;
+                $hours_for_goal[$goal] = 0;
             }
 
             $projects_for_goal[$goal] = $projects_for_goal[$goal] + 1;
             $volunteers_for_goal[$goal] = $volunteers_for_goal[$goal] + $row['accepted'];
+            $hours_for_goal[$goal] = $hours_for_goal[$goal] + $row['hours'];
         }
     }
 }
@@ -64,6 +71,7 @@ foreach ($find->fetchAll() as $row) {
             if (!isset($projects_for_goal[$goal])) {
                 $projects_for_goal[$goal] = 0;
                 $volunteers_for_goal[$goal] = 0;
+                $hours_for_goal[$goal] = 0;
             }
 
             $projects_for_goal[$goal] = $projects_for_goal[$goal] + 1;
@@ -194,7 +202,8 @@ include 'includes/app-header.php';
         <div class="bar"><span style="width:<?php echo $percent; ?>%;background:<?php echo $colour; ?>"></span></div>
       </div>
       <span class="mono text-end" style="font-size:12.5px;color:#6d7880;white-space:nowrap">
-        <?php echo $volunteers_for_goal[$goal]; ?> volunteers
+        <?php echo $volunteers_for_goal[$goal]; ?> volunteers<br>
+        <?php echo $hours_for_goal[$goal]; ?> hours
       </span>
       <span class="text-end" style="min-width:64px">
         <span class="d-block" style="font-family:'Fraunces',serif;font-size:22px;color:<?php echo $colour; ?>">

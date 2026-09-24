@@ -10,6 +10,33 @@ if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 3 && $_SESSION['role_id
     exit;
 }
 
+$partnership_id = 0;
+
+// active agreements this organisation is part of, so the work can be filed under one
+if ($_SESSION['role_id'] == 6) {
+    $find = $pdo->prepare(
+        'SELECT p.partnership_id, a.name AS asked_by, b.name AS partner_name
+         FROM partnership p
+         LEFT JOIN organisation a ON a.organisation_id = p.organisation_id
+         LEFT JOIN organisation b ON b.organisation_id = p.partner_id
+         WHERE p.status = ?
+         ORDER BY a.name'
+    );
+    $find->execute(array('active'));
+} else {
+    $find = $pdo->prepare(
+        'SELECT p.partnership_id, a.name AS asked_by, b.name AS partner_name
+         FROM partnership p
+         LEFT JOIN organisation a ON a.organisation_id = p.organisation_id
+         LEFT JOIN organisation b ON b.organisation_id = p.partner_id
+         WHERE p.status = ? AND (p.organisation_id = ? OR p.partner_id = ?)
+         ORDER BY a.name'
+    );
+    $find->execute(array('active', $_SESSION['organisation_id'], $_SESSION['organisation_id']));
+}
+
+$partnerships = $find->fetchAll();
+
 $errors = array();
 $title = '';
 $location = '';
@@ -27,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $spots = $_POST['spots'];
     $category = $_POST['category'];
     $description = trim($_POST['description']);
+    $partnership_id = $_POST['partnership_id'];
 
     if ($title == '') {
         $errors[] = 'Give the opportunity a title.';
@@ -52,16 +80,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $sdg = '';
     }
 
+    if ($partnership_id > 0) {
+        $under = $partnership_id;
+    } else {
+        $under = null;
+    }
+
     if (count($errors) == 0) {
         $save = $pdo->prepare(
-            'INSERT INTO opportunity (title, organisation_id, created_by, location, opportunity_date,
-                                      hours_required, spots, category, skills, sdg_goals, description)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO opportunity (title, organisation_id, partnership_id, created_by, location,
+                                      opportunity_date, hours_required, spots, category, skills,
+                                      sdg_goals, description)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         $save->execute(array(
             $title,
             $_SESSION['organisation_id'],
+            $under,
             $_SESSION['user_id'],
             $location,
             $date,
@@ -141,6 +177,24 @@ include 'includes/app-header.php';
         <option <?php if ($category == 'Technology') echo 'selected'; ?>>Technology</option>
         <option <?php if ($category == 'Community Service') echo 'selected'; ?>>Community Service</option>
       </select>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="partnership_id">Run under a partnership</label>
+      <select class="select-v" id="partnership_id" name="partnership_id">
+        <option value="0">Not part of a partnership</option>
+        <?php foreach ($partnerships as $row) { ?>
+          <option value="<?php echo $row['partnership_id']; ?>"
+            <?php if ($partnership_id == $row['partnership_id']) echo 'selected'; ?>>
+            <?php echo htmlspecialchars($row['asked_by']); ?> &amp; <?php echo htmlspecialchars($row['partner_name']); ?>
+          </option>
+        <?php } ?>
+      </select>
+      <?php if (count($partnerships) == 0) { ?>
+        <p style="margin-top:6px;font-size:12.5px;color:#98a2aa">
+          Your organisation has no active partnerships yet, so this stays as standalone work.
+        </p>
+      <?php } ?>
     </div>
 
     <div class="field">

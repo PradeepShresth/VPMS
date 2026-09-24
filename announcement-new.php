@@ -5,6 +5,12 @@ $active = 'messages';
 require 'includes/auth.php';
 require 'config/db.php';
 
+// volunteers can join a discussion but not broadcast to the whole network
+if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 3 && $_SESSION['role_id'] != 6) {
+    header('Location: messages.php');
+    exit;
+}
+
 $errors = array();
 $title = '';
 $audience = 'Everyone on the platform';

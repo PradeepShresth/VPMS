@@ -64,7 +64,9 @@ include 'includes/app-header.php';
     <h1 class="page-title">Reports &amp; Analytics</h1>
     <p class="page-sub">Generate, download, and manage impact reports</p>
   </div>
-  <a class="btn-v btn-green" href="report-generate.php">+ Generate Report</a>
+  <?php if ($_SESSION['role_id'] != 1 && $_SESSION['role_id'] != 4) { ?>
+    <a class="btn-v btn-green" href="report-generate.php">+ Generate Report</a>
+  <?php } ?>
 </div>
 
 <div class="row g-3 mb-4">
@@ -121,7 +123,9 @@ include 'includes/app-header.php';
           &nbsp;·&nbsp; <?php echo htmlspecialchars($row['full_name']); ?>
         </span>
       </span>
-      <a class="btn-v btn-soft btn-sm-v" href="report-download.php?id=<?php echo $row['report_id']; ?>">Download</a>
+      <?php if ($_SESSION['role_id'] != 1 && $_SESSION['role_id'] != 4) { ?>
+        <a class="btn-v btn-soft btn-sm-v" href="report-download.php?id=<?php echo $row['report_id']; ?>">Download</a>
+      <?php } ?>
     </div>
   <?php } ?>
 

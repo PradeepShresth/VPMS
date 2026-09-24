@@ -1,6 +1,6 @@
 <?php
 $page_title = 'Review Applications | VPMS';
-$active = 'opportunities';
+$active = 'applications';
 
 require 'includes/auth.php';
 require 'config/db.php';

@@ -160,7 +160,7 @@ include 'includes/app-header.php';
       <a class="ms-auto link-green" style="font-size:13.5px" href="opportunities.php">View all &rarr;</a>
     </div>
 
-    <div class="list-card h-100">
+    <div class="list-card">
       <?php if (count($opportunities) == 0) { ?>
         <div class="list-row">
           <span style="font-size:14px;color:#6d7880">Nothing posted yet.</span>
@@ -189,7 +189,7 @@ include 'includes/app-header.php';
             <?php if ($row['status'] == 'open') { ?>
               <span class="badge-v badge-navy d-block mb-2">Open</span>
             <?php } else { ?>
-              <span class="badge-v badge-grey d-block mb-2">Closed</span>
+              <span class="badge-v badge-red d-block mb-2">Closed</span>
             <?php } ?>
             <span class="mono" style="font-size:12.5px;color:#6d7880">
               <?php echo $row['filled']; ?>/<?php echo $row['spots']; ?> spots
@@ -197,6 +197,8 @@ include 'includes/app-header.php';
           </span>
         </a>
       <?php } ?>
+
+      <div class="list-row" style="min-height:74px"></div>
     </div>
   </div>
 
@@ -227,7 +229,7 @@ include 'includes/app-header.php';
         <div class="d-flex align-items-start gap-2 mb-2">
           <span class="row-title"><?php echo htmlspecialchars($row['title']); ?></span>
           <?php if ($row['event_date'] == date('Y-m-d')) { ?>
-            <span class="badge-v badge-navy ms-auto">Ongoing</span>
+            <span class="badge-v badge-green ms-auto">Ongoing</span>
           <?php } else { ?>
             <span class="badge-v badge-blue ms-auto">Upcoming</span>
           <?php } ?>
@@ -256,7 +258,7 @@ include 'includes/app-header.php';
       <a class="ms-auto link-green" style="font-size:13.5px" href="partnerships.php">View all &rarr;</a>
     </div>
 
-    <div class="list-card h-100">
+    <div class="list-card">
       <?php if (count($partnerships) == 0) { ?>
         <div class="list-row">
           <span style="font-size:14px;color:#6d7880">No active partnerships yet.</span>
@@ -283,6 +285,8 @@ include 'includes/app-header.php';
           <span class="badge-v badge-navy">Active</span>
         </a>
       <?php } ?>
+
+      <div class="list-row" style="min-height:120px"></div>
     </div>
   </div>
 
@@ -293,7 +297,7 @@ include 'includes/app-header.php';
       <a class="ms-auto link-green" style="font-size:13.5px" href="impact.php">SDG Dashboard &rarr;</a>
     </div>
 
-    <div class="card-v card-v-pad h-100">
+    <div class="card-v card-v-pad">
       <?php if (count($goals_covered) == 0) { ?>
         <p style="font-size:14px;color:#6d7880">
           No SDG goals recorded yet. Tick them when posting an opportunity or requesting a partnership.

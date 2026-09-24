@@ -1,6 +1,5 @@
 <?php
 $page_title = 'VPMS | Volunteer Partnership Management System';
-$nav_simple = true;
 
 require 'config/db.php';
 
@@ -24,69 +23,25 @@ include 'includes/header.php';
 
 <!-- hero -->
 <header class="hero">
-  <div class="wrap">
-    <div class="row gx-5 gy-5 align-items-center">
+  <div class="wrap text-center">
 
-      <div class="col-lg-7">
-        <span class="sdg-badge"><span class="dot"></span>Supporting UN Sustainable Development Goal 17</span>
+    <span class="sdg-badge"><span class="dot"></span>Supporting UN Sustainable Development Goal 17</span>
 
-        <h1 class="hero-title">
-          Volunteer Today<br>
-          <span class="gold">Transform Tomorrow</span>
-        </h1>
+    <h1 class="hero-title">
+      Volunteer Today<br>
+      <span class="gold">Transform Tomorrow</span>
+    </h1>
 
-        <p class="hero-lead">
-          A centralised platform connecting NGOs, corporations, volunteers, and sponsors
-          to create measurable community impact – together.
-        </p>
+    <p class="hero-lead mx-auto">
+      A centralised platform connecting NGOs, corporations, volunteers, and sponsors
+      to create measurable community impact &ndash; together.
+    </p>
 
-        <div class="d-flex flex-wrap gap-3">
-          <a class="btn btn-amber btn-big" href="home.php">Get Started</a>
-        </div>
-      </div>
-
-      <!-- student project card -->
-      <div class="col-lg-5">
-        <div class="project-card">
-          <div class="d-flex align-items-start gap-3 mb-4">
-            <img src="assets/img/win.png" alt="WIN Education" class="win-logo">
-            <div>
-              <p class="project-kicker mb-1">This is a&nbsp; student project</p>
-              <p class="project-note mb-0">
-                A collaborative project by students from Wentworth Institute of Higher Education.
-              </p>
-            </div>
-          </div>
-
-          <h2 class="team-heading">Team Members</h2>
-
-          <ul class="team-list list-unstyled mb-0">
-            <li class="team-row d-flex align-items-center gap-3">
-              <img class="avatar" src="assets/img/team/pradeep.png" alt="Pradeep Shrestha">
-              <span>
-                <span class="team-name d-block">Pradeep Shrestha</span>
-                <span class="team-id d-block">988584</span>
-              </span>
-            </li>
-            <li class="team-row d-flex align-items-center gap-3">
-              <img class="avatar" src="assets/img/team/anil.jpeg" alt="Anil Dangi">
-              <span>
-                <span class="team-name d-block">Anil Dangi</span>
-                <span class="team-id d-block">983642</span>
-              </span>
-            </li>
-            <li class="team-row d-flex align-items-center gap-3">
-              <img class="avatar" src="assets/img/team/aruna.jpeg" alt="Aruna Tamang">
-              <span>
-                <span class="team-name d-block">Aruna Tamang</span>
-                <span class="team-id d-block">987749</span>
-              </span>
-            </li>
-          </ul>
-        </div>
-      </div>
-
+    <div class="d-flex flex-wrap justify-content-center gap-3">
+      <a class="btn btn-amber" href="register.php">Join the Platform</a>
+      <a class="btn btn-forest" href="login.php">Sign In to Dashboard</a>
     </div>
+
   </div>
 </header>
 
@@ -227,6 +182,7 @@ include 'includes/header.php';
   <div class="wrap-narrow">
     <h2 class="cta-title">Ready to make your impact?</h2>
     <p class="cta-text">Join <?php echo $organisations; ?> organisations already building meaningful partnerships on VPMS.</p>
+    <a class="btn btn-amber btn-big" href="register.php">Create Your Account</a>
   </div>
 </section>
 
