@@ -136,6 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
+// skills and goals are saved as one string, split them so the boxes tick
 $chosen_skills = explode(',', $opportunity['skills']);
 $chosen_goals = explode(',', $opportunity['sdg_goals']);
 

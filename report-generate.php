@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $from = $_POST['from'];
     $to = $_POST['to'];
 
+    // just a readable label for the list, the dates are not filtered on yet
     if ($from != '' && $to != '') {
         $period = date('j M Y', strtotime($from)) . ' - ' . date('j M Y', strtotime($to));
     } elseif ($from != '') {

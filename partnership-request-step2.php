@@ -11,6 +11,7 @@ if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 6) {
     exit;
 }
 
+// step 1 sent the partner across, keep hold of it for step 3
 $partner_id = isset($_POST['partner_id']) ? $_POST['partner_id'] : 0;
 
 $find = $pdo->prepare('SELECT name FROM organization WHERE organization_id = ?');

@@ -13,6 +13,7 @@ if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 6) {
 
 $my_organization = $_SESSION['organization_id'];
 
+// do not offer my own organization as the partner
 if ($my_organization != '') {
     $find = $pdo->prepare(
         'SELECT organization_id, name, type FROM organization

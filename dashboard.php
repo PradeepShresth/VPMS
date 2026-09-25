@@ -5,6 +5,7 @@ $active = 'dashboard';
 require 'includes/auth.php';
 require 'config/db.php';
 
+// the four big numbers at the top
 $count = $pdo->prepare('SELECT COUNT(*) FROM `user` WHERE role_id = ?');
 $count->execute(array(1));
 $volunteers = $count->fetchColumn();
@@ -46,7 +47,7 @@ $find = $pdo->query(
      ORDER BY o.created_at DESC
      LIMIT 3'
 );
-$opportunities = $find->fetchAll();
+$opportunities = $find->fetchAll();   // newest three, for the list below
 
 $find = $pdo->prepare(
     'SELECT e.event_id, e.title, e.event_date, e.event_time, e.volunteers_needed,

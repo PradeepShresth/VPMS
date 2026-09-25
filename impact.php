@@ -5,6 +5,7 @@ $active = 'impact';
 require 'includes/auth.php';
 require 'config/db.php';
 
+// numbers for the row of tiles
 $count = $pdo->prepare('SELECT COUNT(*) FROM `user` WHERE role_id = ?');
 $count->execute(array(1));
 $volunteers = $count->fetchColumn();

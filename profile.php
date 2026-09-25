@@ -5,6 +5,7 @@ $active = 'profile';
 require 'includes/auth.php';
 require 'config/db.php';
 
+// the change password box at the bottom posts back to this page
 $errors = array();
 $changed = false;
 
@@ -49,6 +50,7 @@ $find = $pdo->prepare(
 $find->execute(array($_SESSION['user_id']));
 $me = $find->fetch();
 
+// a real organization row wins over whatever they typed in when signing up
 if ($me['organization'] != '') {
     $organization = $me['organization'];
 } elseif ($me['organization_name'] != '') {

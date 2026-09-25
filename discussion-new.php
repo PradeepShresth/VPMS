@@ -5,6 +5,7 @@ $active = 'messages';
 require 'includes/auth.php';
 require 'config/db.php';
 
+// pre-pick the first topic so the select is never empty
 $errors = array();
 $topic = 'Volunteer Experience Sharing';
 $title = '';

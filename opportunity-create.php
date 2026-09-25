@@ -37,6 +37,7 @@ if ($_SESSION['role_id'] == 6) {
 
 $partnerships = $find->fetchAll();
 
+// nothing is saved until everything checks out
 $errors = array();
 $title = '';
 $location = '';

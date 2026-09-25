@@ -20,6 +20,7 @@ $find = $pdo->prepare(
 );
 $find->execute(array($_SESSION['user_id'], 'pending'));
 $asked = $find->fetch();
+// if this comes back with a row they already asked to join somewhere
 
 $my_organization = '';
 

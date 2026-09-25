@@ -106,6 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     exit;
 }
 
+// all, pending, accepted or rejected
 $show = isset($_GET['show']) ? $_GET['show'] : 'all';
 
 $sql = 'SELECT a.*, u.full_name, u.email, u.phone,

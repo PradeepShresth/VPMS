@@ -8,6 +8,7 @@ require 'config/db.php';
 $id = isset($_GET['id']) ? $_GET['id'] : 0;
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // empty replies just bounce back, no error needed
     $reply = trim($_POST['reply']);
 
     if ($reply != '') {

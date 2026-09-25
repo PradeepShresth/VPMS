@@ -51,6 +51,7 @@ foreach ($events as $row) {
     }
 }
 
+// same idea as the opportunities page
 $can_create = ($_SESSION['role_id'] == 2 || $_SESSION['role_id'] == 6);
 
 include 'includes/app-header.php';

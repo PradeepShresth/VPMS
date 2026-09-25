@@ -34,6 +34,7 @@ if ($thread['user_one'] != $_SESSION['user_id'] && $thread['user_two'] != $_SESS
     exit;
 }
 
+// a thread has two people in it and we do not know which side we are on
 if ($thread['user_one'] == $_SESSION['user_id']) {
     $other_name = $thread['name_two'];
     $other_role = $thread['role_two'];

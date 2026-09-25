@@ -105,6 +105,7 @@ $list = $pdo->prepare(
 $list->execute(array($id));
 $roster = $list->fetchAll();
 
+// only confirmed ones fill a spot
 $joined = 0;
 
 foreach ($roster as $person) {

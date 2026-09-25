@@ -5,6 +5,7 @@ $active = 'organizations';
 require 'includes/auth.php';
 require 'config/db.php';
 
+// search box and the pills above the table
 $search = isset($_GET['q']) ? trim($_GET['q']) : '';
 $filter = isset($_GET['filter']) ? $_GET['filter'] : 'All';
 

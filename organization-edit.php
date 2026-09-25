@@ -16,6 +16,7 @@ if ($organization == false) {
     exit;
 }
 
+// admin, or the coordinator of this exact organization. nobody else
 if ($_SESSION['role_id'] != 6
  && !($_SESSION['role_id'] == 2 && $_SESSION['organization_id'] == $id)) {
     header('Location: organization-details.php?id=' . $id);

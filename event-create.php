@@ -10,6 +10,7 @@ if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 6) {
     exit;
 }
 
+// the form starts empty, unless an opportunity is being converted
 $errors = array();
 $title = '';
 $location = '';

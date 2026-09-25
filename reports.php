@@ -24,6 +24,7 @@ $count = $pdo->prepare('SELECT COUNT(*) FROM event_volunteer WHERE attended = ?'
 $count->execute(array(1));
 $attendances = $count->fetchColumn();
 
+// the reports somebody already generated
 $find = $pdo->query(
     'SELECT r.*, u.full_name
      FROM report r

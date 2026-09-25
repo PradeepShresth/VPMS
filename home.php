@@ -3,6 +3,7 @@ $page_title = 'VPMS | Volunteer Partnership Management System';
 
 require 'config/db.php';
 
+// same counters as the cover page
 $count = $pdo->prepare('SELECT COUNT(*) FROM `user` WHERE role_id = ? AND status = ?');
 $count->execute(array(1, 'active'));
 $volunteers = $count->fetchColumn();

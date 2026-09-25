@@ -66,6 +66,7 @@ $list = $pdo->prepare(
 $list->execute(array($id));
 $roster = $list->fetchAll();
 
+// waitlisted people are on the roster but do not count towards the total
 $joined = 0;
 
 foreach ($roster as $person) {

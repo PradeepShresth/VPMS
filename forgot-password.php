@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $account = $find->fetch();
 
     if ($account != false) {
+        // no mail server in the project, so the code goes in the next page's URL
         $code = bin2hex(random_bytes(16));
 
         $save = $pdo->prepare('UPDATE `user` SET reset_code = ? WHERE user_id = ?');
@@ -21,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         exit;
     }
 
+    // same page even when the email is unknown, otherwise it leaks who has an account
     header('Location: forgot-password-sent.php?email=' . urlencode($email));
     exit;
 }

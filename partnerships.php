@@ -5,6 +5,7 @@ $active = 'partnerships';
 require 'includes/auth.php';
 require 'config/db.php';
 
+// which pill is selected
 $filter = isset($_GET['filter']) ? $_GET['filter'] : 'all';
 
 $sql = 'SELECT p.*, asked.name AS asked_by, partner.name AS partner_name,

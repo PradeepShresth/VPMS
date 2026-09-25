@@ -21,6 +21,7 @@ if ($event['created_by'] != $_SESSION['user_id'] && $_SESSION['role_id'] != 6) {
     exit;
 }
 
+// same fields as creating one
 $errors = array();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {

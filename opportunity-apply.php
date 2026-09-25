@@ -66,6 +66,7 @@ if ($mine->fetch() != false) {
     exit;
 }
 
+// the answers the volunteer types in
 $errors = array();
 $why = '';
 $availability = '';

@@ -8,6 +8,7 @@ require 'config/db.php';
 $is_admin = ($_SESSION['role_id'] == 6);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // one page, three kinds of thing waiting for a yes or no
     $kind = $_POST['kind'];
     $decision = $_POST['decision'];
 

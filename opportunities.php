@@ -5,6 +5,7 @@ $active = 'opportunities';
 require 'includes/auth.php';
 require 'config/db.php';
 
+// whatever was typed in the search box, and which pill is on
 $search = isset($_GET['q']) ? trim($_GET['q']) : '';
 $category = isset($_GET['category']) ? $_GET['category'] : 'All';
 
@@ -39,6 +40,7 @@ $find = $pdo->prepare($sql);
 $find->execute($values);
 $opportunities = $find->fetchAll();
 
+// only these two get the Post Opportunity button
 $can_post = ($_SESSION['role_id'] == 2 || $_SESSION['role_id'] == 6);
 
 include 'includes/app-header.php';

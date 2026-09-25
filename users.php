@@ -35,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     exit;
 }
 
+// search box and the role pills
 $search = isset($_GET['q']) ? trim($_GET['q']) : '';   // 0 in the role filter means show everyone
 $role = isset($_GET['role']) ? $_GET['role'] : '0';
 

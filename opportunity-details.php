@@ -27,6 +27,7 @@ if ($opportunity == false) {
 
 $page_title = $opportunity['title'] . ' | VPMS';
 
+// how many applied and how many got in, for the spots bar
 $count = $pdo->prepare('SELECT COUNT(*) FROM application WHERE opportunity_id = ?');
 $count->execute(array($id));
 $applications = $count->fetchColumn();
@@ -129,6 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reopen']) && $is_owner
     exit;
 }
 
+// people who run it can flip to see what a volunteer sees
 $volunteer_view = !$is_owner;
 
 if (isset($_GET['view'])) {

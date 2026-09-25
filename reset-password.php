@@ -12,6 +12,7 @@ if (isset($_POST['code'])) {
     $code = '';
 }
 
+// the code has to match a user, and a blank code must not match anyone
 $find = $pdo->prepare('SELECT user_id, email FROM `user` WHERE reset_code = ? AND reset_code != ?');
 $find->execute(array($code, ''));
 $account = $find->fetch();

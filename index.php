@@ -4,6 +4,7 @@ $nav_simple = true;
 
 require 'config/db.php';
 
+// real numbers for the counters further down the page
 $count = $pdo->prepare('SELECT COUNT(*) FROM `user` WHERE role_id = ? AND status = ?');
 $count->execute(array(1, 'active'));
 $volunteers = $count->fetchColumn();
