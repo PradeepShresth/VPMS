@@ -1,6 +1,6 @@
 <?php
-$page_title = 'Organisations | VPMS';
-$active = 'organisations';
+$page_title = 'Organizations | VPMS';
+$active = 'organizations';
 
 require 'includes/auth.php';
 require 'config/db.php';
@@ -8,10 +8,10 @@ require 'config/db.php';
 $search = isset($_GET['q']) ? trim($_GET['q']) : '';
 $filter = isset($_GET['filter']) ? $_GET['filter'] : 'All';
 
-$sql = 'SELECT o.organisation_id, o.name, o.type, o.city, o.state, o.status,
-               (SELECT COUNT(*) FROM `user` u WHERE u.organisation_id = o.organisation_id) AS members,
-               (SELECT COUNT(*) FROM opportunity p WHERE p.organisation_id = o.organisation_id) AS projects
-        FROM organisation o
+$sql = 'SELECT o.organization_id, o.name, o.type, o.city, o.state, o.status,
+               (SELECT COUNT(*) FROM `user` u WHERE u.organization_id = o.organization_id) AS members,
+               (SELECT COUNT(*) FROM opportunity p WHERE p.organization_id = o.organization_id) AS projects
+        FROM organization o
         WHERE 1 = 1';
 $values = array();
 
@@ -32,12 +32,12 @@ $sql = $sql . ' ORDER BY o.name';
 
 $find = $pdo->prepare($sql);
 $find->execute($values);
-$organisations = $find->fetchAll();
+$organizations = $find->fetchAll();
 
-$count = $pdo->query('SELECT COUNT(*) FROM organisation');
+$count = $pdo->query('SELECT COUNT(*) FROM organization');
 $total = $count->fetchColumn();
 
-$count = $pdo->prepare('SELECT COUNT(*) FROM organisation WHERE status = ?');
+$count = $pdo->prepare('SELECT COUNT(*) FROM organization WHERE status = ?');
 $count->execute(array('pending'));
 $waiting = $count->fetchColumn();
 
@@ -45,41 +45,41 @@ include 'includes/app-header.php';
 ?>
 
 <?php if (isset($_GET['done'])) { ?>
-  <div class="banner"><i class="bi bi-check-circle-fill"></i>Organisation updated. The contact person has been notified.</div>
+  <div class="banner"><i class="bi bi-check-circle-fill"></i>Organization updated. The contact person has been notified.</div>
 <?php } ?>
 
 <div class="head-row">
   <div class="flex-grow-1">
-    <h1 class="page-title">Organisations</h1>
-    <p class="page-sub"><?php echo $total; ?> organisations on the platform</p>
+    <h1 class="page-title">Organizations</h1>
+    <p class="page-sub"><?php echo $total; ?> organizations on the platform</p>
   </div>
   <?php if ($waiting > 0) { ?>
     <span class="badge-v badge-pending mt-2"><?php echo $waiting; ?> pending approval</span>
   <?php } ?>
 </div>
 
-<form class="d-flex flex-wrap align-items-center gap-3 mb-3" action="organisations.php" method="get">
+<form class="d-flex flex-wrap align-items-center gap-3 mb-3" action="organizations.php" method="get">
   <input type="search" class="input-v" style="flex:1 1 320px;max-width:740px" name="q"
-         placeholder="Search organisations..." value="<?php echo htmlspecialchars($search); ?>">
+         placeholder="Search organizations..." value="<?php echo htmlspecialchars($search); ?>">
   <input type="hidden" name="filter" value="<?php echo htmlspecialchars($filter); ?>">
   <button class="btn-v btn-soft" type="submit">Search</button>
 </form>
 
 <div class="d-flex flex-wrap gap-2 mb-4">
-  <a class="pill <?php if ($filter == 'All') echo 'active'; ?>" href="organisations.php?q=<?php echo urlencode($search); ?>&filter=All">All</a>
-  <a class="pill <?php if ($filter == 'NGO') echo 'active'; ?>" href="organisations.php?q=<?php echo urlencode($search); ?>&filter=NGO">NGO</a>
-  <a class="pill <?php if ($filter == 'Corporate') echo 'active'; ?>" href="organisations.php?q=<?php echo urlencode($search); ?>&filter=Corporate">Corporate</a>
-  <a class="pill <?php if ($filter == 'Community') echo 'active'; ?>" href="organisations.php?q=<?php echo urlencode($search); ?>&filter=Community">Community</a>
-  <a class="pill <?php if ($filter == 'Pending') echo 'active'; ?>" href="organisations.php?q=<?php echo urlencode($search); ?>&filter=Pending">Pending</a>
-  <a class="pill <?php if ($filter == 'Verified') echo 'active'; ?>" href="organisations.php?q=<?php echo urlencode($search); ?>&filter=Verified">Verified</a>
+  <a class="pill <?php if ($filter == 'All') echo 'active'; ?>" href="organizations.php?q=<?php echo urlencode($search); ?>&filter=All">All</a>
+  <a class="pill <?php if ($filter == 'NGO') echo 'active'; ?>" href="organizations.php?q=<?php echo urlencode($search); ?>&filter=NGO">NGO</a>
+  <a class="pill <?php if ($filter == 'Corporate') echo 'active'; ?>" href="organizations.php?q=<?php echo urlencode($search); ?>&filter=Corporate">Corporate</a>
+  <a class="pill <?php if ($filter == 'Community') echo 'active'; ?>" href="organizations.php?q=<?php echo urlencode($search); ?>&filter=Community">Community</a>
+  <a class="pill <?php if ($filter == 'Pending') echo 'active'; ?>" href="organizations.php?q=<?php echo urlencode($search); ?>&filter=Pending">Pending</a>
+  <a class="pill <?php if ($filter == 'Verified') echo 'active'; ?>" href="organizations.php?q=<?php echo urlencode($search); ?>&filter=Verified">Verified</a>
 </div>
 
-<?php if (count($organisations) == 0) { ?>
+<?php if (count($organizations) == 0) { ?>
 
   <div class="card-v card-v-pad text-center">
-    <p class="row-title mb-2">No organisations yet</p>
+    <p class="row-title mb-2">No organizations yet</p>
     <p style="font-size:14px;color:#6d7880">
-      Organisations appear here once somebody registers one from the sign-up page.
+      Organizations appear here once somebody registers one from the sign-up page.
     </p>
   </div>
 
@@ -89,7 +89,7 @@ include 'includes/app-header.php';
   <div class="table-responsive">
     <table class="table-v">
       <tr>
-        <th>Organisation</th>
+        <th>Organization</th>
         <th>Type</th>
         <th>Location</th>
         <th>Members</th>
@@ -98,7 +98,7 @@ include 'includes/app-header.php';
         <th></th>
       </tr>
 
-      <?php foreach ($organisations as $row) { ?>
+      <?php foreach ($organizations as $row) { ?>
 
         <?php
         $where = $row['city'];
@@ -138,7 +138,7 @@ include 'includes/app-header.php';
           </td>
           <td class="text-end">
             <a class="link-green" style="font-size:13.5px"
-               href="organisation-details.php?id=<?php echo $row['organisation_id']; ?>">View &rarr;</a>
+               href="organization-details.php?id=<?php echo $row['organization_id']; ?>">View &rarr;</a>
           </td>
         </tr>
       <?php } ?>

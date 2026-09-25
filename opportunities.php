@@ -10,13 +10,13 @@ $category = isset($_GET['category']) ? $_GET['category'] : 'All';
 
 $sql = 'SELECT o.opportunity_id, o.title, o.location, o.opportunity_date, o.hours_required,
                o.spots, o.category, o.skills, o.status,
-               org.name AS organisation, u.organisation_name,
+               org.name AS organization, u.organization_name,
                (SELECT COUNT(*) FROM application a
                  WHERE a.opportunity_id = o.opportunity_id AND a.status = \'accepted\') AS filled,
                (SELECT mine.status FROM application mine
                  WHERE mine.opportunity_id = o.opportunity_id AND mine.user_id = ?) AS my_status
         FROM opportunity o
-        LEFT JOIN organisation org ON org.organisation_id = o.organisation_id
+        LEFT JOIN organization org ON org.organization_id = o.organization_id
         LEFT JOIN `user` u ON u.user_id = o.created_by
         WHERE 1 = 1';
 // the search box and the pills each add a bit onto the query
@@ -39,7 +39,7 @@ $find = $pdo->prepare($sql);
 $find->execute($values);
 $opportunities = $find->fetchAll();
 
-$can_post = ($_SESSION['role_id'] == 2 || $_SESSION['role_id'] == 3 || $_SESSION['role_id'] == 6);
+$can_post = ($_SESSION['role_id'] == 2 || $_SESSION['role_id'] == 6);
 
 include 'includes/app-header.php';
 ?>
@@ -113,10 +113,10 @@ include 'includes/app-header.php';
         $percent = 100;
     }
 
-    if ($row['organisation'] != '') {
-        $posted_by = $row['organisation'];
+    if ($row['organization'] != '') {
+        $posted_by = $row['organization'];
     } else {
-        $posted_by = $row['organisation_name'];
+        $posted_by = $row['organization_name'];
     }
     ?>
 

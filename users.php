@@ -13,6 +13,19 @@ if ($_SESSION['role_id'] != 6) {
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $status = $_POST['status'];
 
+    // an organiser is approved through their organization, so not from here
+    $find = $pdo->prepare(
+        'SELECT o.status FROM organization o
+          JOIN `user` u ON u.organization_id = o.organization_id
+         WHERE u.user_id = ? AND o.contact_id = u.user_id'
+    );
+    $find->execute(array($_POST['user_id']));
+    $organiser_of = $find->fetchColumn();
+
+    if ($status == 'active' && $organiser_of != false && $organiser_of != 'verified') {
+        $status = '';
+    }
+
     if ($status == 'active' || $status == 'suspended') {
         $update = $pdo->prepare('UPDATE `user` SET status = ? WHERE user_id = ?');
         $update->execute(array($status, $_POST['user_id']));
@@ -25,11 +38,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 $search = isset($_GET['q']) ? trim($_GET['q']) : '';   // 0 in the role filter means show everyone
 $role = isset($_GET['role']) ? $_GET['role'] : '0';
 
-$sql = 'SELECT u.user_id, u.full_name, u.email, u.status, u.created_at, u.organisation_name,
-               r.name AS role_name, org.name AS organisation
+$sql = 'SELECT u.user_id, u.full_name, u.email, u.status, u.created_at, u.organization_name,
+               u.organization_id, r.name AS role_name, org.name AS organization,
+               org.contact_id, org.status AS organization_status
         FROM `user` u
         JOIN role r ON r.role_id = u.role_id
-        LEFT JOIN organisation org ON org.organisation_id = u.organisation_id
+        LEFT JOIN organization org ON org.organization_id = u.organization_id
         WHERE 1 = 1';
 $values = array();
 
@@ -86,8 +100,7 @@ include 'includes/app-header.php';
 <div class="d-flex flex-wrap gap-2 mb-4">
   <a class="pill <?php if ($role == '0') echo 'active'; ?>" href="users.php?q=<?php echo urlencode($search); ?>&role=0">All</a>
   <a class="pill <?php if ($role == '1') echo 'active'; ?>" href="users.php?q=<?php echo urlencode($search); ?>&role=1">Volunteer</a>
-  <a class="pill <?php if ($role == '2') echo 'active'; ?>" href="users.php?q=<?php echo urlencode($search); ?>&role=2">NGO Coordinator</a>
-  <a class="pill <?php if ($role == '3') echo 'active'; ?>" href="users.php?q=<?php echo urlencode($search); ?>&role=3">CSR Manager</a>
+  <a class="pill <?php if ($role == '2') echo 'active'; ?>" href="users.php?q=<?php echo urlencode($search); ?>&role=2">Coordinator</a>
   <a class="pill <?php if ($role == '4') echo 'active'; ?>" href="users.php?q=<?php echo urlencode($search); ?>&role=4">Field Officer</a>
   <a class="pill <?php if ($role == '5') echo 'active'; ?>" href="users.php?q=<?php echo urlencode($search); ?>&role=5">Sponsor</a>
   <a class="pill <?php if ($role == '6') echo 'active'; ?>" href="users.php?q=<?php echo urlencode($search); ?>&role=6">Administrator</a>
@@ -108,7 +121,7 @@ include 'includes/app-header.php';
       <tr>
         <th>User</th>
         <th>Role</th>
-        <th>Organisation</th>
+        <th>Organization</th>
         <th>Joined</th>
         <th>Status</th>
         <th></th>
@@ -117,12 +130,12 @@ include 'includes/app-header.php';
       <?php foreach ($users as $row) { ?>
 
         <?php
-        if ($row['organisation'] != '') {
-            $organisation = $row['organisation'];
-        } elseif ($row['organisation_name'] != '') {
-            $organisation = $row['organisation_name'];
+        if ($row['organization'] != '') {
+            $organization = $row['organization'];
+        } elseif ($row['organization_name'] != '') {
+            $organization = $row['organization_name'];
         } else {
-            $organisation = '—';
+            $organization = '—';
         }
         ?>
 
@@ -131,13 +144,18 @@ include 'includes/app-header.php';
             <span class="d-flex align-items-center gap-3">
               <span class="avatar-circle"><?php echo strtoupper(substr($row['full_name'], 0, 1)); ?></span>
               <span>
-                <span class="d-block fw-bold"><?php echo htmlspecialchars($row['full_name']); ?></span>
+                <span class="d-block fw-bold">
+                  <?php echo htmlspecialchars($row['full_name']); ?>
+                  <?php if ($row['contact_id'] == $row['user_id']) { ?>
+                    <span class="badge-v badge-blue" style="margin-left:6px">Main organiser</span>
+                  <?php } ?>
+                </span>
                 <span class="d-block" style="font-size:12.5px;color:#6d7880"><?php echo htmlspecialchars($row['email']); ?></span>
               </span>
             </span>
           </td>
           <td style="color:#16663e"><?php echo htmlspecialchars($row['role_name']); ?></td>
-          <td class="td-muted"><?php echo htmlspecialchars($organisation); ?></td>
+          <td class="td-muted"><?php echo htmlspecialchars($organization); ?></td>
           <td class="td-muted mono" style="font-size:12.5px"><?php echo date('Y-m-d', strtotime($row['created_at'])); ?></td>
           <td>
             <?php if ($row['status'] == 'active') { ?>
@@ -157,6 +175,13 @@ include 'includes/app-header.php';
                 <input type="hidden" name="status" value="suspended">
                 <button class="btn-v btn-outline btn-sm-v" type="submit">Suspend</button>
               </form>
+            <?php } elseif ($row['status'] == 'pending' && $row['contact_id'] == $row['user_id']) { ?>
+              <span class="td-muted" style="font-size:12.5px">
+                Approved with
+                <a class="link-green" href="organization-details.php?id=<?php echo $row['organization_id']; ?>">
+                  <?php echo htmlspecialchars($row['organization']); ?>
+                </a>
+              </span>
             <?php } elseif ($row['status'] == 'pending') { ?>
               <form action="users.php" method="post">
                 <input type="hidden" name="user_id" value="<?php echo $row['user_id']; ?>">

@@ -7,9 +7,9 @@ $count = $pdo->prepare('SELECT COUNT(*) FROM `user` WHERE role_id = ? AND status
 $count->execute(array(1, 'active'));
 $volunteers = $count->fetchColumn();
 
-$count = $pdo->prepare('SELECT COUNT(*) FROM organisation WHERE status = ?');
+$count = $pdo->prepare('SELECT COUNT(*) FROM organization WHERE status = ?');
 $count->execute(array('verified'));
-$organisations = $count->fetchColumn();
+$organizations = $count->fetchColumn();
 
 $count = $pdo->prepare('SELECT COALESCE(SUM(hours_logged), 0) FROM event_volunteer WHERE attended = ?');
 $count->execute(array(1));
@@ -54,8 +54,8 @@ include 'includes/header.php';
         <span class="stat-label">Active Volunteers</span>
       </div>
       <div class="col-6 col-md-3 stat">
-        <span class="stat-value"><?php echo $organisations; ?></span>
-        <span class="stat-label">Partner Organisations</span>
+        <span class="stat-value"><?php echo $organizations; ?></span>
+        <span class="stat-label">Partner Organizations</span>
       </div>
       <div class="col-6 col-md-3 stat">
         <span class="stat-value"><?php echo $hours; ?></span>
@@ -103,7 +103,7 @@ include 'includes/header.php';
         <div class="module-card h-100">
           <span class="module-icon"><i class="bi bi-circle-half"></i></span>
           <h3 class="module-title">SDG 17 Impact Dashboard</h3>
-          <p class="module-text mb-0">Measure and visualise your organisation’s contribution to the Global Goals.</p>
+          <p class="module-text mb-0">Measure and visualise your organization’s contribution to the Global Goals.</p>
         </div>
       </div>
       <div class="col-md-6 col-lg-4">
@@ -128,7 +128,7 @@ include 'includes/header.php';
 <section class="section section-sand" id="roles">
   <div class="wrap-narrow text-center">
     <p class="eyebrow">BUILT FOR EVERYONE</p>
-    <h2 class="section-title mb-5">Six roles, one platform</h2>
+    <h2 class="section-title mb-5">Five roles, one platform</h2>
 
     <div class="row g-4 text-start">
       <div class="col-md-6 col-lg-4">
@@ -141,34 +141,27 @@ include 'includes/header.php';
       <div class="col-md-6 col-lg-4">
         <div class="role-card h-100">
           <span class="role-label">Role 02</span>
-          <h3 class="role-title">NGO Coordinator</h3>
-          <p class="role-text mb-0">Create opportunities and lead community projects.</p>
+          <h3 class="role-title">Organization Coordinator</h3>
+          <p class="role-text mb-0">Run your organization, its opportunities and its volunteers.</p>
         </div>
       </div>
       <div class="col-md-6 col-lg-4">
         <div class="role-card h-100">
           <span class="role-label">Role 03</span>
-          <h3 class="role-title">Corporate CSR Manager</h3>
-          <p class="role-text mb-0">Run employee volunteering programmes.</p>
-        </div>
-      </div>
-      <div class="col-md-6 col-lg-4">
-        <div class="role-card h-100">
-          <span class="role-label">Role 04</span>
           <h3 class="role-title">Volunteer</h3>
           <p class="role-text mb-0">Browse, apply, and track your impact.</p>
         </div>
       </div>
       <div class="col-md-6 col-lg-4">
         <div class="role-card h-100">
-          <span class="role-label">Role 05</span>
+          <span class="role-label">Role 04</span>
           <h3 class="role-title">Community Field Officer</h3>
           <p class="role-text mb-0">Validate attendance and verify hours on-site.</p>
         </div>
       </div>
       <div class="col-md-6 col-lg-4">
         <div class="role-card h-100">
-          <span class="role-label">Role 06</span>
+          <span class="role-label">Role 05</span>
           <h3 class="role-title">Sponsor / Donor</h3>
           <p class="role-text mb-0">Track funded projects and partnership outcomes.</p>
         </div>
@@ -181,7 +174,7 @@ include 'includes/header.php';
 <section class="cta text-center">
   <div class="wrap-narrow">
     <h2 class="cta-title">Ready to make your impact?</h2>
-    <p class="cta-text">Join <?php echo $organisations; ?> organisations already building meaningful partnerships on VPMS.</p>
+    <p class="cta-text">Join <?php echo $organizations; ?> organizations already building meaningful partnerships on VPMS.</p>
     <a class="btn btn-amber btn-big" href="register.php">Create Your Account</a>
   </div>
 </section>

@@ -7,14 +7,18 @@ require 'config/db.php';
 $id = isset($_GET['id']) ? $_GET['id'] : 0;
 
 $find = $pdo->prepare(
-    'SELECT e.*, org.name AS organisation, u.organisation_name,
+    'SELECT e.*, org.name AS organization, u.organization_name,
             o.title AS opportunity_title, o.description AS opportunity_description,
             o.skills AS opportunity_skills, o.sdg_goals AS opportunity_goals,
-            o.hours_required
+            o.hours_required, o.partnership_id,
+            a.name AS partner_one, b.name AS partner_two
      FROM event e
-     LEFT JOIN organisation org ON org.organisation_id = e.organisation_id
+     LEFT JOIN organization org ON org.organization_id = e.organization_id
      LEFT JOIN `user` u ON u.user_id = e.created_by
      LEFT JOIN opportunity o ON o.opportunity_id = e.opportunity_id
+     LEFT JOIN partnership p ON p.partnership_id = o.partnership_id
+     LEFT JOIN organization a ON a.organization_id = p.organization_id
+     LEFT JOIN organization b ON b.organization_id = p.partner_id
      WHERE e.event_id = ?'
 );
 $find->execute(array($id));
@@ -86,13 +90,63 @@ if ($event['event_date'] == $today) {
     $when = 'Completed';
 }
 
-if ($event['organisation'] != '') {
-    $run_by = $event['organisation'];
+if ($event['organization'] != '') {
+    $run_by = $event['organization'];
 } else {
-    $run_by = $event['organisation_name'];
+    $run_by = $event['organization_name'];
 }
 
-$can_manage = ($event['created_by'] == $_SESSION['user_id'] || $_SESSION['role_id'] == 4 || $_SESSION['role_id'] == 6);
+// this event is ours to run if we own it, or if we are partnered with whoever does
+$manages = false;
+
+if ($_SESSION['role_id'] == 6 || $event['created_by'] == $_SESSION['user_id']) {
+    $manages = true;
+} elseif (($_SESSION['role_id'] == 2 || $_SESSION['role_id'] == 4)
+       && $event['organization_id'] != '' && $_SESSION['organization_id'] != '') {
+
+    if ($event['organization_id'] == $_SESSION['organization_id']) {
+        $manages = true;
+    } else {
+        $together = $pdo->prepare(
+            'SELECT partnership_id FROM partnership
+              WHERE status = ?
+                AND ((organization_id = ? AND partner_id = ?)
+                  OR (organization_id = ? AND partner_id = ?))'
+        );
+        $together->execute(array('active',
+            $_SESSION['organization_id'], $event['organization_id'],
+            $event['organization_id'], $_SESSION['organization_id']));
+
+        if ($together->fetch() != false) {
+            $manages = true;
+        }
+    }
+}
+
+$can_manage = $manages;
+
+// money a sponsor put behind the opportunity this event came from
+$sponsorships = array();
+$sponsored = 0;
+
+if ($event['opportunity_id'] != '') {
+    $find = $pdo->prepare(
+        'SELECT s.amount, s.note, s.status, u.full_name, o.name AS sponsor_organization
+         FROM sponsorship s
+         JOIN `user` u ON u.user_id = s.sponsor_id
+         LEFT JOIN organization o ON o.organization_id = s.organization_id
+         WHERE s.opportunity_id = ?
+         ORDER BY s.created_at'
+    );
+    $find->execute(array($event['opportunity_id']));
+    $sponsorships = $find->fetchAll();
+
+    foreach ($sponsorships as $row) {
+        if ($row['status'] == 'accepted') {
+            $sponsored = $sponsored + $row['amount'];
+        }
+    }
+}
 
 include 'includes/app-header.php';
 ?>
@@ -150,6 +204,64 @@ include 'includes/app-header.php';
         &nbsp;·&nbsp; <?php echo $event['hours_required']; ?> hrs
       </p>
     </a>
+
+    <?php if ($event['partnership_id'] != '') { ?>
+      <a class="card-v card-partner card-v-pad d-block mb-4" href="partnership-details.php?id=<?php echo $event['partnership_id']; ?>">
+        <p class="section-label mb-1">Part of a partnership</p>
+        <p style="font-size:14.5px;font-weight:600">
+          <?php echo htmlspecialchars($event['partner_one']); ?>
+          <i class="bi bi-arrow-left-right mx-2" style="color:#16663e;font-size:13px"></i>
+          <?php echo htmlspecialchars($event['partner_two']); ?>
+        </p>
+        <p style="font-size:13px;color:#6d7880">Hours recorded here count towards this agreement.</p>
+      </a>
+    <?php } ?>
+
+    <?php if ($sponsored > 0 || ($manages && count($sponsorships) > 0)) { ?>
+      <div class="card-v card-sponsor card-v-pad mb-4">
+        <div class="d-flex align-items-center mb-2">
+          <span class="section-label mb-0">Sponsorship</span>
+          <?php if ($sponsored > 0) { ?>
+            <span class="ms-auto mono" style="font-size:13px;color:#16663e">
+              $<?php echo number_format($sponsored, 2); ?> accepted
+            </span>
+          <?php } ?>
+        </div>
+
+        <?php foreach ($sponsorships as $row) { ?>
+          <?php if ($row['status'] == 'accepted' || $manages) { ?>
+            <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+              <span class="flex-grow-1" style="font-size:14px">
+                <strong>$<?php echo number_format($row['amount'], 2); ?></strong>
+                from
+                <?php if ($row['sponsor_organization'] != '') { ?>
+                  <?php echo htmlspecialchars($row['sponsor_organization']); ?>
+                <?php } else { ?>
+                  <?php echo htmlspecialchars($row['full_name']); ?>
+                <?php } ?>
+                <?php if ($row['note'] != '') { ?>
+                  <span style="color:#6d7880">&middot; <?php echo htmlspecialchars($row['note']); ?></span>
+                <?php } ?>
+              </span>
+              <?php if ($row['status'] == 'accepted') { ?>
+                <span class="badge-v badge-green">Accepted</span>
+              <?php } elseif ($row['status'] == 'pending') { ?>
+                <span class="badge-v badge-pending">Offered</span>
+              <?php } else { ?>
+                <span class="badge-v badge-grey">Declined</span>
+              <?php } ?>
+            </div>
+          <?php } ?>
+        <?php } ?>
+
+        <?php if ($manages) { ?>
+          <p style="font-size:12.5px;color:#98a2aa">
+            Offers are accepted or declined on
+            <a class="link-green" href="opportunity-details.php?id=<?php echo $event['opportunity_id']; ?>">the opportunity</a>.
+          </p>
+        <?php } ?>
+      </div>
+    <?php } ?>
 
     <p class="section-label">About this Work</p>
     <p class="mb-4" style="color:#48545e;font-size:14.5px;line-height:1.7">

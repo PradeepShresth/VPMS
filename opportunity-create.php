@@ -5,20 +5,20 @@ $active = 'opportunities';
 require 'includes/auth.php';
 require 'config/db.php';
 
-if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 3 && $_SESSION['role_id'] != 6) {
+if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 6) {
     header('Location: opportunities.php');
     exit;
 }
 
 $partnership_id = 0;
 
-// active agreements this organisation is part of, so the work can be filed under one
+// active agreements this organization is part of, so the work can be filed under one
 if ($_SESSION['role_id'] == 6) {
     $find = $pdo->prepare(
         'SELECT p.partnership_id, a.name AS asked_by, b.name AS partner_name
          FROM partnership p
-         LEFT JOIN organisation a ON a.organisation_id = p.organisation_id
-         LEFT JOIN organisation b ON b.organisation_id = p.partner_id
+         LEFT JOIN organization a ON a.organization_id = p.organization_id
+         LEFT JOIN organization b ON b.organization_id = p.partner_id
          WHERE p.status = ?
          ORDER BY a.name'
     );
@@ -27,12 +27,12 @@ if ($_SESSION['role_id'] == 6) {
     $find = $pdo->prepare(
         'SELECT p.partnership_id, a.name AS asked_by, b.name AS partner_name
          FROM partnership p
-         LEFT JOIN organisation a ON a.organisation_id = p.organisation_id
-         LEFT JOIN organisation b ON b.organisation_id = p.partner_id
-         WHERE p.status = ? AND (p.organisation_id = ? OR p.partner_id = ?)
+         LEFT JOIN organization a ON a.organization_id = p.organization_id
+         LEFT JOIN organization b ON b.organization_id = p.partner_id
+         WHERE p.status = ? AND (p.organization_id = ? OR p.partner_id = ?)
          ORDER BY a.name'
     );
-    $find->execute(array('active', $_SESSION['organisation_id'], $_SESSION['organisation_id']));
+    $find->execute(array('active', $_SESSION['organization_id'], $_SESSION['organization_id']));
 }
 
 $partnerships = $find->fetchAll();
@@ -45,6 +45,36 @@ $hours = 6;
 $spots = 20;
 $category = 'Environment';
 $description = '';
+
+// "Duplicate" sends the old one here so the form opens filled in
+$copy_of = false;
+$copied_skills = array();
+$copied_goals = array();
+
+if (isset($_GET['copy'])) {
+    $find = $pdo->prepare('SELECT * FROM opportunity WHERE opportunity_id = ?');
+    $find->execute(array($_GET['copy']));
+    $copy_of = $find->fetch();
+}
+
+if ($copy_of != false) {
+    $title = $copy_of['title'];
+    $location = $copy_of['location'];
+    $date = $copy_of['opportunity_date'];
+    $hours = $copy_of['hours_required'];
+    $spots = $copy_of['spots'];
+    $category = $copy_of['category'];
+    $description = $copy_of['description'];
+    $partnership_id = $copy_of['partnership_id'];
+
+    foreach (explode(',', $copy_of['skills']) as $one) {
+        $copied_skills[] = trim($one);
+    }
+
+    foreach (explode(',', $copy_of['sdg_goals']) as $one) {
+        $copied_goals[] = trim($one);
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $title = trim($_POST['title']);
@@ -70,12 +100,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if (isset($_POST['skills'])) {
         $skills = implode(', ', $_POST['skills']);
+        $copied_skills = $_POST['skills'];
     } else {
         $skills = '';
     }
 
     if (isset($_POST['sdg'])) {
         $sdg = implode(',', $_POST['sdg']);
+        $copied_goals = $_POST['sdg'];
     } else {
         $sdg = '';
     }
@@ -88,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if (count($errors) == 0) {
         $save = $pdo->prepare(
-            'INSERT INTO opportunity (title, organisation_id, partnership_id, created_by, location,
+            'INSERT INTO opportunity (title, organization_id, partnership_id, created_by, location,
                                       opportunity_date, hours_required, spots, category, skills,
                                       sdg_goals, description)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -96,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         $save->execute(array(
             $title,
-            $_SESSION['organisation_id'],
+            $_SESSION['organization_id'],
             $under,
             $_SESSION['user_id'],
             $location,
@@ -122,6 +154,15 @@ include 'includes/app-header.php';
   <a class="back-link" href="opportunities.php"><i class="bi bi-arrow-left"></i> Back to Opportunities</a>
 
   <h1 class="page-title mb-4">Create Opportunity</h1>
+
+  <?php if ($copy_of != false) { ?>
+    <div class="notice mb-4">
+      <p class="notice-title">Copied from <?php echo htmlspecialchars($copy_of['title']); ?></p>
+      <p class="notice-text">
+        Nothing has been created yet. Change the date or anything else, then publish it.
+      </p>
+    </div>
+  <?php } ?>
 
   <?php if (count($errors) > 0) { ?>
     <div class="notice mb-4" style="border-left-color:#c8504b;background:#fdf3f2">
@@ -192,7 +233,7 @@ include 'includes/app-header.php';
       </select>
       <?php if (count($partnerships) == 0) { ?>
         <p style="margin-top:6px;font-size:12.5px;color:#98a2aa">
-          Your organisation has no active partnerships yet, so this stays as standalone work.
+          Your organization has no active partnerships yet, so this stays as standalone work.
         </p>
       <?php } ?>
     </div>
@@ -200,26 +241,40 @@ include 'includes/app-header.php';
     <div class="field">
       <span class="field-label">Skills Required</span>
       <div class="check-grid" style="grid-template-columns:repeat(2,1fr)">
-        <label class="check-v"><input type="checkbox" name="skills[]" value="Physical Fitness"> Physical Fitness</label>
-        <label class="check-v"><input type="checkbox" name="skills[]" value="Teamwork"> Teamwork</label>
-        <label class="check-v"><input type="checkbox" name="skills[]" value="Environmental Awareness"> Environmental Awareness</label>
-        <label class="check-v"><input type="checkbox" name="skills[]" value="First Aid"> First Aid</label>
-        <label class="check-v"><input type="checkbox" name="skills[]" value="Driving Licence"> Driving Licence</label>
-        <label class="check-v"><input type="checkbox" name="skills[]" value="Photography"> Photography</label>
+        <label class="check-v"><input type="checkbox" name="skills[]" value="Physical Fitness"
+          <?php if (in_array('Physical Fitness', $copied_skills)) echo 'checked'; ?>> Physical Fitness</label>
+        <label class="check-v"><input type="checkbox" name="skills[]" value="Teamwork"
+          <?php if (in_array('Teamwork', $copied_skills)) echo 'checked'; ?>> Teamwork</label>
+        <label class="check-v"><input type="checkbox" name="skills[]" value="Environmental Awareness"
+          <?php if (in_array('Environmental Awareness', $copied_skills)) echo 'checked'; ?>> Environmental Awareness</label>
+        <label class="check-v"><input type="checkbox" name="skills[]" value="First Aid"
+          <?php if (in_array('First Aid', $copied_skills)) echo 'checked'; ?>> First Aid</label>
+        <label class="check-v"><input type="checkbox" name="skills[]" value="Driving Licence"
+          <?php if (in_array('Driving Licence', $copied_skills)) echo 'checked'; ?>> Driving Licence</label>
+        <label class="check-v"><input type="checkbox" name="skills[]" value="Photography"
+          <?php if (in_array('Photography', $copied_skills)) echo 'checked'; ?>> Photography</label>
       </div>
     </div>
 
     <div class="field">
       <span class="field-label">SDG Goals this contributes to</span>
       <div class="check-grid">
-        <label class="check-v"><input type="checkbox" name="sdg[]" value="1"> SDG 1</label>
-        <label class="check-v"><input type="checkbox" name="sdg[]" value="2"> SDG 2</label>
-        <label class="check-v"><input type="checkbox" name="sdg[]" value="3"> SDG 3</label>
-        <label class="check-v"><input type="checkbox" name="sdg[]" value="4"> SDG 4</label>
-        <label class="check-v"><input type="checkbox" name="sdg[]" value="13"> SDG 13</label>
-        <label class="check-v"><input type="checkbox" name="sdg[]" value="14"> SDG 14</label>
-        <label class="check-v"><input type="checkbox" name="sdg[]" value="15"> SDG 15</label>
-        <label class="check-v"><input type="checkbox" name="sdg[]" value="17"> SDG 17</label>
+        <label class="check-v"><input type="checkbox" name="sdg[]" value="1"
+          <?php if (in_array('1', $copied_goals)) echo 'checked'; ?>> SDG 1</label>
+        <label class="check-v"><input type="checkbox" name="sdg[]" value="2"
+          <?php if (in_array('2', $copied_goals)) echo 'checked'; ?>> SDG 2</label>
+        <label class="check-v"><input type="checkbox" name="sdg[]" value="3"
+          <?php if (in_array('3', $copied_goals)) echo 'checked'; ?>> SDG 3</label>
+        <label class="check-v"><input type="checkbox" name="sdg[]" value="4"
+          <?php if (in_array('4', $copied_goals)) echo 'checked'; ?>> SDG 4</label>
+        <label class="check-v"><input type="checkbox" name="sdg[]" value="13"
+          <?php if (in_array('13', $copied_goals)) echo 'checked'; ?>> SDG 13</label>
+        <label class="check-v"><input type="checkbox" name="sdg[]" value="14"
+          <?php if (in_array('14', $copied_goals)) echo 'checked'; ?>> SDG 14</label>
+        <label class="check-v"><input type="checkbox" name="sdg[]" value="15"
+          <?php if (in_array('15', $copied_goals)) echo 'checked'; ?>> SDG 15</label>
+        <label class="check-v"><input type="checkbox" name="sdg[]" value="17"
+          <?php if (in_array('17', $copied_goals)) echo 'checked'; ?>> SDG 17</label>
       </div>
     </div>
 

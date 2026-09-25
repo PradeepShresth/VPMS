@@ -13,9 +13,9 @@ $count = $pdo->prepare('SELECT COUNT(*) FROM `user` WHERE role_id = ? AND status
 $count->execute(array(1, 'active'));
 $volunteers = $count->fetchColumn();
 
-$count = $pdo->prepare('SELECT COUNT(*) FROM organisation WHERE status = ?');
+$count = $pdo->prepare('SELECT COUNT(*) FROM organization WHERE status = ?');
 $count->execute(array('verified'));
-$organisations = $count->fetchColumn();
+$organizations = $count->fetchColumn();
 
 $count = $pdo->prepare('SELECT COALESCE(SUM(hours_logged), 0) FROM event_volunteer WHERE attended = ?');
 $count->execute(array(1));
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } else {
         $find = $pdo->prepare(
             'SELECT u.user_id, u.full_name, u.password_hash, u.status,
-                    u.role_id, u.organisation_id, r.name AS role_name
+                    u.role_id, u.organization_id, r.name AS role_name
              FROM `user` u
              JOIN role r ON r.role_id = u.role_id
              WHERE u.email = ?'
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['full_name'] = $account['full_name'];
             $_SESSION['role_name'] = $account['role_name'];
             $_SESSION['role_id'] = $account['role_id'];
-            $_SESSION['organisation_id'] = $account['organisation_id'];
+            $_SESSION['organization_id'] = $account['organization_id'];
 
             header('Location: dashboard.php');
             exit;
@@ -84,8 +84,8 @@ include 'includes/auth-header.php';
         <span class="a-lab">Registered volunteers</span>
       </div>
       <div class="auth-stat">
-        <span class="a-val"><?php echo $organisations; ?></span>
-        <span class="a-lab">Partner organisations</span>
+        <span class="a-val"><?php echo $organizations; ?></span>
+        <span class="a-lab">Partner organizations</span>
       </div>
       <div class="auth-stat">
         <span class="a-val"><?php echo $hours; ?></span>
@@ -111,7 +111,7 @@ include 'includes/auth-header.php';
 
         <div class="field">
           <label class="field-label" for="email">Email address</label>
-          <input class="input-v" type="email" id="email" name="email" placeholder="you@organisation.org"
+          <input class="input-v" type="email" id="email" name="email" placeholder="you@organization.org"
                  value="<?php echo htmlspecialchars($email); ?>">
         </div>
 

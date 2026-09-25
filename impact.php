@@ -16,11 +16,11 @@ $hours = $count->fetchColumn();
 $count = $pdo->query('SELECT COUNT(*) FROM event');
 $events = $count->fetchColumn();
 
-$count = $pdo->query('SELECT COUNT(DISTINCT country) FROM organisation WHERE country != \'\'');
+$count = $pdo->query('SELECT COUNT(DISTINCT country) FROM organization WHERE country != \'\'');
 $countries = $count->fetchColumn();
 
-$count = $pdo->query('SELECT COUNT(*) FROM organisation');
-$organisations = $count->fetchColumn();
+$count = $pdo->query('SELECT COUNT(*) FROM organization');
+$organizations = $count->fetchColumn();
 
 $count = $pdo->prepare('SELECT COUNT(*) FROM partnership WHERE status = ?');
 $count->execute(array('active'));
@@ -232,8 +232,8 @@ include 'includes/app-header.php';
     </div>
     <div class="col-6 col-lg-3">
       <div class="focus-stat">
-        <span class="f-val"><?php echo $organisations; ?></span>
-        <span class="f-lab">Organisations</span>
+        <span class="f-val"><?php echo $organizations; ?></span>
+        <span class="f-lab">Organizations</span>
       </div>
     </div>
     <div class="col-6 col-lg-3">

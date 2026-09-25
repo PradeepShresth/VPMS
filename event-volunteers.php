@@ -16,7 +16,34 @@ if ($event == false) {
     exit;
 }
 
-if ($event['created_by'] != $_SESSION['user_id'] && $_SESSION['role_id'] != 4 && $_SESSION['role_id'] != 6) {
+// this event is ours to run if we own it, or if we are partnered with whoever does
+$manages = false;
+
+if ($_SESSION['role_id'] == 6 || $event['created_by'] == $_SESSION['user_id']) {
+    $manages = true;
+} elseif (($_SESSION['role_id'] == 2 || $_SESSION['role_id'] == 4)
+       && $event['organization_id'] != '' && $_SESSION['organization_id'] != '') {
+
+    if ($event['organization_id'] == $_SESSION['organization_id']) {
+        $manages = true;
+    } else {
+        $together = $pdo->prepare(
+            'SELECT partnership_id FROM partnership
+              WHERE status = ?
+                AND ((organization_id = ? AND partner_id = ?)
+                  OR (organization_id = ? AND partner_id = ?))'
+        );
+        $together->execute(array('active',
+            $_SESSION['organization_id'], $event['organization_id'],
+            $event['organization_id'], $_SESSION['organization_id']));
+
+        if ($together->fetch() != false) {
+            $manages = true;
+        }
+    }
+}
+
+if (!$manages) {
     header('Location: event-details.php?id=' . $id);
     exit;
 }

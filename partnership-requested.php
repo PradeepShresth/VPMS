@@ -10,7 +10,7 @@ $id = isset($_GET['id']) ? $_GET['id'] : 0;
 $find = $pdo->prepare(
     'SELECT partner.name AS partner_name
      FROM partnership p
-     LEFT JOIN organisation partner ON partner.organisation_id = p.partner_id
+     LEFT JOIN organization partner ON partner.organization_id = p.partner_id
      WHERE p.partnership_id = ?'
 );
 $find->execute(array($id));

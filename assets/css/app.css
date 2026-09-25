@@ -238,6 +238,17 @@ p { margin: 0; }
 
 .card-v-pad { padding: 20px 22px; }
 
+/* the two cards that say who is behind the work */
+.card-partner {
+  border-color: #cadfd2;
+  background: #f1f7f3;
+}
+
+.card-sponsor {
+  border-color: #f0ddb6;
+  background: #fdf6ea;
+}
+
 .card-head {
   display: flex;
   align-items: center;

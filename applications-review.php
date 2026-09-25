@@ -33,15 +33,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $update->execute(array($status, $_POST['row_id']));
     }
 
-    if ($kind == 'organisation' && $is_admin) {
+    if ($kind == 'organization' && $is_admin) {
         if ($decision == 'approve') {
             $status = 'verified';
         } else {
             $status = 'rejected';
         }
 
-        $update = $pdo->prepare('UPDATE organisation SET status = ? WHERE organisation_id = ?');
+        $update = $pdo->prepare('UPDATE organization SET status = ? WHERE organization_id = ?');
         $update->execute(array($status, $_POST['row_id']));
+
+        // whoever registered it is approved with it
+        if ($decision == 'approve') {
+            $people = $pdo->prepare('UPDATE `user` SET status = ? WHERE organization_id = ? AND status = ?');
+            $people->execute(array('active', $_POST['row_id'], 'pending'));
+        } else {
+            $people = $pdo->prepare('UPDATE `user` SET status = ? WHERE organization_id = ? AND status = ?');
+            $people->execute(array('suspended', $_POST['row_id'], 'pending'));
+        }
     }
 
     header('Location: applications-review.php?done=1');
@@ -51,18 +60,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 $show = isset($_GET['show']) ? $_GET['show'] : 'all';
 
 $sql = 'SELECT a.application_id, a.created_at, u.full_name, o.title,
-               org.name AS organisation, poster.organisation_name
+               org.name AS organization, poster.organization_name
         FROM application a
         JOIN `user` u ON u.user_id = a.user_id
         JOIN opportunity o ON o.opportunity_id = a.opportunity_id
         JOIN `user` poster ON poster.user_id = o.created_by
-        LEFT JOIN organisation org ON org.organisation_id = o.organisation_id
+        LEFT JOIN organization org ON org.organization_id = o.organization_id
         WHERE a.status = ?';
 $values = array('pending');
 
 if (!$is_admin) {
-    $sql = $sql . ' AND o.created_by = ?';
+    $sql = $sql . ' AND (o.created_by = ? OR (o.organization_id IS NOT NULL AND o.organization_id = ?))';
     $values[] = $_SESSION['user_id'];
+    $values[] = $_SESSION['organization_id'];
 }
 
 $sql = $sql . ' ORDER BY a.created_at DESC';
@@ -72,7 +82,7 @@ $find->execute($values);
 $applications = $find->fetchAll();
 
 $accounts = array();
-$organisations = array();
+$organizations = array();
 
 if ($is_admin) {
     $find = $pdo->prepare(
@@ -80,22 +90,23 @@ if ($is_admin) {
          FROM `user` u
          JOIN role r ON r.role_id = u.role_id
          WHERE u.status = ?
+           AND u.organization_id IS NULL
          ORDER BY u.created_at DESC'
     );
     $find->execute(array('pending'));
     $accounts = $find->fetchAll();
 
     $find = $pdo->prepare(
-        'SELECT organisation_id, name, type, city, created_at
-         FROM organisation
+        'SELECT organization_id, name, type, city, created_at
+         FROM organization
          WHERE status = ?
          ORDER BY created_at DESC'
     );
     $find->execute(array('pending'));
-    $organisations = $find->fetchAll();
+    $organizations = $find->fetchAll();
 }
 
-$waiting = count($applications) + count($accounts) + count($organisations);
+$waiting = count($applications) + count($accounts) + count($organizations);
 
 include 'includes/app-header.php';
 ?>
@@ -118,7 +129,7 @@ include 'includes/app-header.php';
   <a class="pill <?php if ($show == 'applications') echo 'active'; ?>" href="applications-review.php?show=applications">Volunteer applications</a>
   <?php if ($is_admin) { ?>
     <a class="pill <?php if ($show == 'accounts') echo 'active'; ?>" href="applications-review.php?show=accounts">Account requests</a>
-    <a class="pill <?php if ($show == 'organisations') echo 'active'; ?>" href="applications-review.php?show=organisations">Organisation requests</a>
+    <a class="pill <?php if ($show == 'organizations') echo 'active'; ?>" href="applications-review.php?show=organizations">Organization requests</a>
   <?php } ?>
 </div>
 
@@ -133,10 +144,10 @@ include 'includes/app-header.php';
   <?php foreach ($applications as $row) { ?>
 
     <?php
-    if ($row['organisation'] != '') {
-        $posted_by = $row['organisation'];
-    } elseif ($row['organisation_name'] != '') {
-        $posted_by = $row['organisation_name'];
+    if ($row['organization'] != '') {
+        $posted_by = $row['organization'];
+    } elseif ($row['organization_name'] != '') {
+        $posted_by = $row['organization_name'];
     } else {
         $posted_by = '—';
     }
@@ -210,15 +221,15 @@ include 'includes/app-header.php';
   <?php } ?>
 <?php } ?>
 
-<?php if ($show == 'all' || $show == 'organisations') { ?>
-  <?php foreach ($organisations as $row) { ?>
+<?php if ($show == 'all' || $show == 'organizations') { ?>
+  <?php foreach ($organizations as $row) { ?>
     <div class="card-v card-v-pad mb-3">
       <div class="d-flex flex-wrap align-items-start gap-3">
         <span class="avatar-circle"><?php echo strtoupper(substr($row['name'], 0, 1)); ?></span>
         <span class="flex-grow-1 min-w-0">
           <span class="d-flex flex-wrap align-items-center gap-2 mb-1">
             <span class="row-title"><?php echo htmlspecialchars($row['name']); ?></span>
-            <span class="chip" style="font-size:12px">Organisation request</span>
+            <span class="chip" style="font-size:12px">Organization request</span>
           </span>
           <span class="row-meta d-block">
             <?php echo htmlspecialchars($row['type']); ?> verification
@@ -229,16 +240,16 @@ include 'includes/app-header.php';
           </span>
         </span>
         <span class="d-flex gap-2">
-          <a class="btn-v btn-soft btn-sm-v" href="organisation-details.php?id=<?php echo $row['organisation_id']; ?>">View</a>
+          <a class="btn-v btn-soft btn-sm-v" href="organization-details.php?id=<?php echo $row['organization_id']; ?>">View</a>
           <form action="applications-review.php" method="post">
-            <input type="hidden" name="kind" value="organisation">
-            <input type="hidden" name="row_id" value="<?php echo $row['organisation_id']; ?>">
+            <input type="hidden" name="kind" value="organization">
+            <input type="hidden" name="row_id" value="<?php echo $row['organization_id']; ?>">
             <input type="hidden" name="decision" value="approve">
             <button class="btn-v btn-green btn-sm-v" type="submit">Approve</button>
           </form>
           <form action="applications-review.php" method="post">
-            <input type="hidden" name="kind" value="organisation">
-            <input type="hidden" name="row_id" value="<?php echo $row['organisation_id']; ?>">
+            <input type="hidden" name="kind" value="organization">
+            <input type="hidden" name="row_id" value="<?php echo $row['organization_id']; ?>">
             <input type="hidden" name="decision" value="reject">
             <button class="btn-v btn-outline btn-sm-v" type="submit">Reject</button>
           </form>

@@ -1,5 +1,5 @@
 <?php
-$page_title = 'Register your Organisation | VPMS';
+$page_title = 'Register your Organization | VPMS';
 $body_class = 'auth-center';
 
 require 'config/db.php';
@@ -60,9 +60,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if (count($errors) == 0) {
 
-        // save the organisation first, because the contact account points at it
+        // save the organization first, because the contact account points at it
         $save_org = $pdo->prepare(
-            'INSERT INTO organisation (name, type, registration_no, country, state, city, address, website, description)
+            'INSERT INTO organization (name, type, registration_no, country, state, city, address, website, description)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
@@ -71,18 +71,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $org['state'], $org['city'], $org['address'], $org['website'], $about
         ));
 
-        $organisation_id = $pdo->lastInsertId();
+        $organization_id = $pdo->lastInsertId();
 
-        // the contact person becomes an NGO Coordinator account (role 2)
+        // the contact person gets the role that matches what they registered
+        if ($org['type'] == 'Sponsor / Donor') {
+            $contact_role = 5;
+        } else {
+            $contact_role = 2;
+        }
+
         $save_user = $pdo->prepare(
-            'INSERT INTO `user` (full_name, email, password_hash, phone, role_id, organisation_id, designation)
-             VALUES (?, ?, ?, ?, 2, ?, ?)'
+            'INSERT INTO `user` (full_name, email, password_hash, phone, role_id, organization_id, designation)
+             VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
 
         $save_user->execute(array(
             $contact, $email, password_hash($password, PASSWORD_DEFAULT),
-            $phone, $organisation_id, $designation
+            $phone, $contact_role, $organization_id, $designation
         ));
+
+        $point = $pdo->prepare('UPDATE organization SET contact_id = ? WHERE organization_id = ?');
+        $point->execute(array($pdo->lastInsertId(), $organization_id));
 
         unset($_SESSION['new_org']);
 
@@ -101,7 +110,7 @@ include 'includes/auth-header.php';
     <a class="link-green ms-auto" href="register.php">Register as an Individual</a>
   </div>
 
-  <h1 class="auth-title">Register your Organisation</h1>
+  <h1 class="auth-title">Register your Organization</h1>
   <p class="auth-sub">Step 2 of 2 — Contact person</p>
 
   <div class="steps">
@@ -134,13 +143,13 @@ include 'includes/auth-header.php';
 
     <div class="field">
       <label class="field-label" for="designation">Designation/Role</label>
-      <input class="input-v" type="text" id="designation" name="designation" placeholder="e.g. NGO Coordinator"
+      <input class="input-v" type="text" id="designation" name="designation" placeholder="e.g. Programme Manager"
              value="<?php echo htmlspecialchars($designation); ?>">
     </div>
 
     <div class="field">
       <label class="field-label" for="email">Email Address</label>
-      <input class="input-v" type="email" id="email" name="email" placeholder="you@organisation.org"
+      <input class="input-v" type="email" id="email" name="email" placeholder="you@organization.org"
              value="<?php echo htmlspecialchars($email); ?>">
     </div>
 
@@ -161,7 +170,7 @@ include 'includes/auth-header.php';
     </div>
 
     <div class="field">
-      <label class="field-label" for="about">Organisation Description</label>
+      <label class="field-label" for="about">Organization Description</label>
       <textarea class="textarea-v" id="about" name="about"
                 placeholder="Briefly describe your focus areas and mission..."><?php echo htmlspecialchars($about); ?></textarea>
     </div>

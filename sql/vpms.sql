@@ -7,14 +7,16 @@ DROP TABLE IF EXISTS discussion;
 DROP TABLE IF EXISTS announcement;
 DROP TABLE IF EXISTS message;
 DROP TABLE IF EXISTS thread;
+DROP TABLE IF EXISTS membership_request;
 DROP TABLE IF EXISTS report;
+DROP TABLE IF EXISTS sponsorship;
 DROP TABLE IF EXISTS event_volunteer;
 DROP TABLE IF EXISTS event;
 DROP TABLE IF EXISTS application;
 DROP TABLE IF EXISTS opportunity;
 DROP TABLE IF EXISTS partnership;
 DROP TABLE IF EXISTS `user`;
-DROP TABLE IF EXISTS organisation;
+DROP TABLE IF EXISTS organization;
 DROP TABLE IF EXISTS role;
 
 
@@ -26,15 +28,14 @@ CREATE TABLE role (
 
 INSERT INTO role (role_id, name, description) VALUES
   (1, 'Volunteer',               'Browse and apply for community opportunities'),
-  (2, 'NGO Coordinator',         'Manage projects and recruit volunteers'),
-  (3, 'Corporate CSR Manager',   'Lead employee volunteering programs'),
+  (2, 'Organization Coordinator', 'Manage the organization, its opportunities and its volunteers'),
   (4, 'Community Field Officer', 'Validate attendance and verify hours'),
   (5, 'Sponsor / Donor',         'Track funded projects and outcomes'),
   (6, 'System Administrator',    'Approve accounts and manage the platform');
 
 
-CREATE TABLE organisation (
-  organisation_id INT AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE organization (
+  organization_id INT AUTO_INCREMENT PRIMARY KEY,
   name            VARCHAR(150) NOT NULL,
   type            VARCHAR(60) NOT NULL,
   registration_no VARCHAR(60),
@@ -44,12 +45,13 @@ CREATE TABLE organisation (
   address         VARCHAR(255),
   website         VARCHAR(255),
   description     TEXT,
+  contact_id      INT,                                      -- whoever registered it, set once they exist
   status          VARCHAR(20) NOT NULL DEFAULT 'pending',   -- pending, verified or rejected
   created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 
--- organisation_id is only set when the account came from an organisation
+-- organization_id is only set when the account came from an organization
 -- registration. Everyone else just types a name at sign-up.
 CREATE TABLE `user` (
   user_id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -58,8 +60,8 @@ CREATE TABLE `user` (
   password_hash     CHAR(60) NOT NULL,
   phone             VARCHAR(30),
   role_id           INT NOT NULL,
-  organisation_id   INT,
-  organisation_name VARCHAR(150),
+  organization_id   INT,
+  organization_name VARCHAR(150),
   designation       VARCHAR(80),
   skills            VARCHAR(255),
   bio               TEXT,
@@ -67,13 +69,16 @@ CREATE TABLE `user` (
   reset_code        VARCHAR(40),
   created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (role_id) REFERENCES role(role_id),
-  FOREIGN KEY (organisation_id) REFERENCES organisation(organisation_id)
+  FOREIGN KEY (organization_id) REFERENCES organization(organization_id)
 );
+
+-- organization was built first, so its link to the contact is added now
+ALTER TABLE organization ADD FOREIGN KEY (contact_id) REFERENCES `user`(user_id);
 
 
 CREATE TABLE partnership (
   partnership_id  INT AUTO_INCREMENT PRIMARY KEY,
-  organisation_id INT,
+  organization_id INT,
   partner_id      INT,
   type            VARCHAR(60),
   start_date      DATE,
@@ -85,8 +90,8 @@ CREATE TABLE partnership (
   status          VARCHAR(20) NOT NULL DEFAULT 'pending',   -- pending, active, expired or rejected
   requested_by    INT NOT NULL,
   created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (organisation_id) REFERENCES organisation(organisation_id),
-  FOREIGN KEY (partner_id) REFERENCES organisation(organisation_id),
+  FOREIGN KEY (organization_id) REFERENCES organization(organization_id),
+  FOREIGN KEY (partner_id) REFERENCES organization(organization_id),
   FOREIGN KEY (requested_by) REFERENCES `user`(user_id)
 );
 
@@ -94,7 +99,7 @@ CREATE TABLE partnership (
 CREATE TABLE opportunity (
   opportunity_id   INT AUTO_INCREMENT PRIMARY KEY,
   title            VARCHAR(150) NOT NULL,
-  organisation_id  INT,
+  organization_id  INT,
   partnership_id   INT,                                      -- set when it runs under an agreement
   created_by       INT NOT NULL,
   location         VARCHAR(150),
@@ -107,7 +112,7 @@ CREATE TABLE opportunity (
   description      TEXT,
   status           VARCHAR(20) NOT NULL DEFAULT 'open',      -- open or closed
   created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (organisation_id) REFERENCES organisation(organisation_id),
+  FOREIGN KEY (organization_id) REFERENCES organization(organization_id),
   FOREIGN KEY (partnership_id) REFERENCES partnership(partnership_id),
   FOREIGN KEY (created_by) REFERENCES `user`(user_id)
 );
@@ -127,12 +132,27 @@ CREATE TABLE application (
   FOREIGN KEY (user_id) REFERENCES `user`(user_id)
 );
 
+-- a sponsor offering money towards an opportunity; the coordinator accepts it
+CREATE TABLE sponsorship (
+  sponsorship_id  INT AUTO_INCREMENT PRIMARY KEY,
+  opportunity_id  INT NOT NULL,
+  sponsor_id      INT NOT NULL,
+  organization_id INT,                                      -- the sponsor's own organization, if they have one
+  amount          DECIMAL(10,2) NOT NULL DEFAULT 0,
+  note            VARCHAR(255),
+  status          VARCHAR(20) NOT NULL DEFAULT 'pending',   -- pending, accepted or declined
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (opportunity_id) REFERENCES opportunity(opportunity_id),
+  FOREIGN KEY (sponsor_id) REFERENCES `user`(user_id),
+  FOREIGN KEY (organization_id) REFERENCES organization(organization_id)
+);
+
 
 CREATE TABLE event (
   event_id          INT AUTO_INCREMENT PRIMARY KEY,
   title             VARCHAR(150) NOT NULL,
   opportunity_id    INT,
-  organisation_id   INT,
+  organization_id   INT,
   created_by        INT NOT NULL,
   location          VARCHAR(150),
   event_date        DATE,
@@ -142,7 +162,7 @@ CREATE TABLE event (
   status            VARCHAR(20) NOT NULL DEFAULT 'upcoming',
   created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (opportunity_id) REFERENCES opportunity(opportunity_id),
-  FOREIGN KEY (organisation_id) REFERENCES organisation(organisation_id),
+  FOREIGN KEY (organization_id) REFERENCES organization(organization_id),
   FOREIGN KEY (created_by) REFERENCES `user`(user_id)
 );
 
@@ -159,6 +179,18 @@ CREATE TABLE event_volunteer (
   created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (event_id) REFERENCES event(event_id),
   FOREIGN KEY (user_id) REFERENCES `user`(user_id)
+);
+
+-- somebody asking to be listed as part of an organization
+CREATE TABLE membership_request (
+  request_id      INT AUTO_INCREMENT PRIMARY KEY,
+  user_id         INT NOT NULL,
+  organization_id INT NOT NULL,
+  designation     VARCHAR(80),
+  status          VARCHAR(20) NOT NULL DEFAULT 'pending',   -- pending, approved or declined
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES `user`(user_id),
+  FOREIGN KEY (organization_id) REFERENCES organization(organization_id)
 );
 
 

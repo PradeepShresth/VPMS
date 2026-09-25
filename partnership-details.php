@@ -9,8 +9,8 @@ $id = isset($_GET['id']) ? $_GET['id'] : 0;
 $find = $pdo->prepare(
     'SELECT p.*, asked.name AS asked_by, partner.name AS partner_name
      FROM partnership p
-     LEFT JOIN organisation asked ON asked.organisation_id = p.organisation_id
-     LEFT JOIN organisation partner ON partner.organisation_id = p.partner_id
+     LEFT JOIN organization asked ON asked.organization_id = p.organization_id
+     LEFT JOIN organization partner ON partner.organization_id = p.partner_id
      WHERE p.partnership_id = ?'
 );
 $find->execute(array($id));
@@ -25,8 +25,8 @@ $page_title = 'Partnership Details | VPMS';
 
 $is_admin = ($_SESSION['role_id'] == 6);
 
-$is_party = ($_SESSION['organisation_id'] == $partnership['organisation_id']
-          || $_SESSION['organisation_id'] == $partnership['partner_id']);
+$is_party = ($_SESSION['organization_id'] == $partnership['organization_id']
+          || $_SESSION['organization_id'] == $partnership['partner_id']);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['decision']) && $is_admin) {

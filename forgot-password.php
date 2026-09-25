@@ -42,7 +42,7 @@ include 'includes/auth-header.php';
   <form action="forgot-password.php" method="post">
     <div class="field mb-4">
       <label class="field-label" for="email">Email address</label>
-      <input class="input-v" type="email" id="email" name="email" placeholder="you@organisation.org" required>
+      <input class="input-v" type="email" id="email" name="email" placeholder="you@organization.org" required>
     </div>
 
     <button class="btn-v btn-green btn-block btn-lg-v" type="submit">Send Reset Link</button>

@@ -56,7 +56,7 @@ if ($report['report_type'] == 'Volunteer Activity Report') {
 
 } elseif ($report['report_type'] == 'Partnership Performance Report'
        || $report['report_type'] == 'Sponsor Contribution Report') {
-    fputcsv($out, array('Organisation', 'Partner', 'Type', 'Start', 'End', 'SDG goals', 'Status',
+    fputcsv($out, array('Organization', 'Partner', 'Type', 'Start', 'End', 'SDG goals', 'Status',
                         'Opportunities', 'Events', 'Volunteers', 'Hours verified', 'Notes'));
 
     $rows = $pdo->query(
@@ -74,8 +74,8 @@ if ($report['report_type'] == 'Volunteer Activity Report') {
                    JOIN opportunity o ON o.opportunity_id = e.opportunity_id
                   WHERE o.partnership_id = p.partnership_id AND ev.attended = 1) AS hours
          FROM partnership p
-         LEFT JOIN organisation asked ON asked.organisation_id = p.organisation_id
-         LEFT JOIN organisation partner ON partner.organisation_id = p.partner_id
+         LEFT JOIN organization asked ON asked.organization_id = p.organization_id
+         LEFT JOIN organization partner ON partner.organization_id = p.partner_id
          ORDER BY p.created_at DESC'
     );
 
@@ -126,21 +126,21 @@ if ($report['report_type'] == 'Volunteer Activity Report') {
     }
 
 } else {
-    fputcsv($out, array('Opportunity', 'Organisation', 'Date', 'Category', 'Spots',
+    fputcsv($out, array('Opportunity', 'Organization', 'Date', 'Category', 'Spots',
                         'Accepted', 'Applications', 'Status'));
 
     $rows = $pdo->query(
-        'SELECT o.*, org.name AS organisation,
+        'SELECT o.*, org.name AS organization,
                 (SELECT COUNT(*) FROM application a WHERE a.opportunity_id = o.opportunity_id) AS applications,
                 (SELECT COUNT(*) FROM application a WHERE a.opportunity_id = o.opportunity_id
                   AND a.status = \'accepted\') AS accepted
          FROM opportunity o
-         LEFT JOIN organisation org ON org.organisation_id = o.organisation_id
+         LEFT JOIN organization org ON org.organization_id = o.organization_id
          ORDER BY o.opportunity_date DESC'
     );
 
     foreach ($rows->fetchAll() as $row) {
-        fputcsv($out, array($row['title'], $row['organisation'], $row['opportunity_date'],
+        fputcsv($out, array($row['title'], $row['organization'], $row['opportunity_date'],
                             $row['category'], $row['spots'], $row['accepted'],
                             $row['applications'], $row['status']));
     }

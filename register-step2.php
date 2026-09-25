@@ -24,18 +24,25 @@ if ($role_name == false) {
     $role_name = 'Volunteer';
 }
 
+$find = $pdo->prepare('SELECT organization_id, name FROM organization WHERE status = ? ORDER BY name');
+$find->execute(array('verified'));
+$organizations = $find->fetchAll();
+
+$join = 0;
+
 $errors = array();
 $name = '';
 $email = '';
-$organisation = '';
+$organization = '';
 $phone = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $name = trim($_POST['name']);
     $email = trim($_POST['email']);
-    $organisation = trim($_POST['org']);
+    $organization = trim($_POST['org']);
     $phone = trim($_POST['phone']);
+    $join = $_POST['join'];
     $password = $_POST['password'];
     $confirm = $_POST['confirm'];
 
@@ -70,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // all good - save the account and move on
     if (count($errors) == 0) {
         $save = $pdo->prepare(
-            'INSERT INTO `user` (full_name, email, password_hash, phone, role_id, organisation_name)
+            'INSERT INTO `user` (full_name, email, password_hash, phone, role_id, organization_name)
              VALUES (?, ?, ?, ?, ?, ?)'
         );
 
@@ -80,8 +87,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             password_hash($password, PASSWORD_DEFAULT),
             $phone,
             $role_id,
-            $organisation
+            $organization
         ));
+
+        // being part of an organization is the organization's call, so this only asks
+        if ($join > 0) {
+            $ask = $pdo->prepare(
+                'INSERT INTO membership_request (user_id, organization_id) VALUES (?, ?)'
+            );
+            $ask->execute(array($pdo->lastInsertId(), $join));
+        }
 
         header('Location: register-success.php?name=' . urlencode($name));
         exit;
@@ -131,14 +146,30 @@ include 'includes/auth-header.php';
 
     <div class="field">
       <label class="field-label" for="email">Email Address</label>
-      <input class="input-v" type="email" id="email" name="email" placeholder="you@organisation.org"
+      <input class="input-v" type="email" id="email" name="email" placeholder="you@organization.org"
              value="<?php echo htmlspecialchars($email); ?>">
     </div>
 
     <div class="field">
-      <label class="field-label" for="org">Organisation / Affiliation</label>
+      <label class="field-label" for="org">Where you work or study</label>
       <input class="input-v" type="text" id="org" name="org" placeholder="Green Future NGO"
-             value="<?php echo htmlspecialchars($organisation); ?>">
+             value="<?php echo htmlspecialchars($organization); ?>">
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="join">Are you part of an organization on VPMS? (optional)</label>
+      <select class="select-v" id="join" name="join">
+        <option value="0">Not part of one</option>
+        <?php foreach ($organizations as $row) { ?>
+          <option value="<?php echo $row['organization_id']; ?>"
+            <?php if ($join == $row['organization_id']) echo 'selected'; ?>>
+            <?php echo htmlspecialchars($row['name']); ?>
+          </option>
+        <?php } ?>
+      </select>
+      <p style="margin-top:6px;font-size:12.5px;color:#98a2aa">
+        Their coordinator has to approve it before you are listed as part of them.
+      </p>
     </div>
 
     <div class="field">

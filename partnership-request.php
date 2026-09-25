@@ -5,22 +5,22 @@ $active = 'partnerships';
 require 'includes/auth.php';
 require 'config/db.php';
 
-// a partnership is asked for by an organisation, so a volunteer has no business here
-if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 3 && $_SESSION['role_id'] != 6) {
+// a partnership is asked for by an organization, so a volunteer has no business here
+if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 6) {
     header('Location: partnerships.php');
     exit;
 }
 
-$my_organisation = $_SESSION['organisation_id'];
+$my_organization = $_SESSION['organization_id'];
 
-if ($my_organisation != '') {
+if ($my_organization != '') {
     $find = $pdo->prepare(
-        'SELECT organisation_id, name, type FROM organisation
-         WHERE status = ? AND organisation_id != ? ORDER BY name'
+        'SELECT organization_id, name, type FROM organization
+         WHERE status = ? AND organization_id != ? ORDER BY name'
     );
-    $find->execute(array('verified', $my_organisation));
+    $find->execute(array('verified', $my_organization));
 } else {
-    $find = $pdo->prepare('SELECT organisation_id, name, type FROM organisation WHERE status = ? ORDER BY name');
+    $find = $pdo->prepare('SELECT organization_id, name, type FROM organization WHERE status = ? ORDER BY name');
     $find->execute(array('verified'));
 }
 
@@ -41,14 +41,14 @@ include 'includes/app-header.php';
     <span></span>
   </div>
 
-  <p class="section-label">Step 1: Select Partner Organisation</p>
+  <p class="section-label">Step 1: Select Partner Organization</p>
 
-  <?php if ($my_organisation == '') { ?>
+  <?php if ($my_organization == '') { ?>
 
     <div class="notice mb-4">
-      <p class="notice-title">Your account is not linked to an organisation</p>
+      <p class="notice-title">Your account is not linked to an organization</p>
       <p class="notice-text">
-        Partnership requests are made between two organisations. Register an organisation, or ask an
+        Partnership requests are made between two organizations. Register an organization, or ask an
         administrator to link your account to one, then come back here.
       </p>
     </div>
@@ -56,9 +56,9 @@ include 'includes/app-header.php';
   <?php } elseif (count($partners) == 0) { ?>
 
     <div class="card-v card-v-pad text-center">
-      <p class="row-title mb-2">No organisations to partner with yet</p>
+      <p class="row-title mb-2">No organizations to partner with yet</p>
       <p style="font-size:14px;color:#6d7880">
-        Only verified organisations can be chosen. Once another one is verified it will appear here.
+        Only verified organizations can be chosen. Once another one is verified it will appear here.
       </p>
     </div>
 
@@ -68,7 +68,7 @@ include 'includes/app-header.php';
 
       <?php foreach ($partners as $row) { ?>
         <label class="choice">
-          <input type="radio" name="partner_id" value="<?php echo $row['organisation_id']; ?>" required>
+          <input type="radio" name="partner_id" value="<?php echo $row['organization_id']; ?>" required>
           <span class="choice-box">
             <span class="choice-radio"></span>
             <span class="choice-title"><?php echo htmlspecialchars($row['name']); ?></span>

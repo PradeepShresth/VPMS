@@ -8,9 +8,9 @@ require 'config/db.php';
 $id = isset($_GET['id']) ? $_GET['id'] : 0;
 
 $find = $pdo->prepare(
-    'SELECT o.title, org.name AS organisation, u.organisation_name
+    'SELECT o.title, org.name AS organization, u.organization_name
      FROM opportunity o
-     LEFT JOIN organisation org ON org.organisation_id = o.organisation_id
+     LEFT JOIN organization org ON org.organization_id = o.organization_id
      LEFT JOIN `user` u ON u.user_id = o.created_by
      WHERE o.opportunity_id = ?'
 );
@@ -22,10 +22,10 @@ if ($opportunity == false) {
     exit;
 }
 
-if ($opportunity['organisation'] != '') {
-    $posted_by = $opportunity['organisation'];
+if ($opportunity['organization'] != '') {
+    $posted_by = $opportunity['organization'];
 } else {
-    $posted_by = $opportunity['organisation_name'];
+    $posted_by = $opportunity['organization_name'];
 }
 
 include 'includes/app-header.php';

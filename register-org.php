@@ -1,5 +1,5 @@
 <?php
-$page_title = 'Register your Organisation | VPMS';
+$page_title = 'Register your Organization | VPMS';
 $body_class = 'auth-center';
 
 session_start();
@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $org['website'] = trim($_POST['website']);
 
     if ($org['name'] == '') {
-        $errors[] = 'Enter the organisation name.';
+        $errors[] = 'Enter the organization name.';
     }
 
     if ($org['country'] == '') {
@@ -55,8 +55,8 @@ include 'includes/auth-header.php';
     <a class="link-green ms-auto" href="register.php">Register as an Individual</a>
   </div>
 
-  <h1 class="auth-title">Register your Organisation</h1>
-  <p class="auth-sub">Step 1 of 2 — Organisation details</p>
+  <h1 class="auth-title">Register your Organization</h1>
+  <p class="auth-sub">Step 1 of 2 — Organization details</p>
 
   <div class="steps">
     <span class="done"></span>
@@ -75,13 +75,13 @@ include 'includes/auth-header.php';
   <form action="register-org.php" method="post">
 
     <div class="field">
-      <label class="field-label" for="name">Organisation Name</label>
+      <label class="field-label" for="name">Organization Name</label>
       <input class="input-v" type="text" id="name" name="name" placeholder="e.g. Green Future NGO"
              value="<?php echo htmlspecialchars($org['name']); ?>">
     </div>
 
     <div class="field">
-      <label class="field-label" for="type">Organisation Type</label>
+      <label class="field-label" for="type">Organization Type</label>
       <select class="select-v" id="type" name="type">
         <?php foreach ($types as $type) { ?>
           <option <?php if ($org['type'] == $type) echo 'selected'; ?>><?php echo $type; ?></option>

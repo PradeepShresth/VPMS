@@ -11,14 +11,14 @@ $find = $pdo->prepare(
     'SELECT t.*, one.full_name AS name_one, two.full_name AS name_two,
             role_one.name AS role_one, role_two.name AS role_two,
             org_one.name AS org_one, org_two.name AS org_two,
-            one.organisation_name AS typed_one, two.organisation_name AS typed_two
+            one.organization_name AS typed_one, two.organization_name AS typed_two
      FROM thread t
      JOIN `user` one ON one.user_id = t.user_one
      JOIN `user` two ON two.user_id = t.user_two
      JOIN role role_one ON role_one.role_id = one.role_id
      JOIN role role_two ON role_two.role_id = two.role_id
-     LEFT JOIN organisation org_one ON org_one.organisation_id = one.organisation_id
-     LEFT JOIN organisation org_two ON org_two.organisation_id = two.organisation_id
+     LEFT JOIN organization org_one ON org_one.organization_id = one.organization_id
+     LEFT JOIN organization org_two ON org_two.organization_id = two.organization_id
      WHERE t.thread_id = ?'
 );
 $find->execute(array($id));

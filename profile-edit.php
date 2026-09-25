@@ -9,13 +9,46 @@ $find = $pdo->prepare('SELECT * FROM `user` WHERE user_id = ?');
 $find->execute(array($_SESSION['user_id']));
 $me = $find->fetch();
 
+$find = $pdo->prepare('SELECT organization_id, name FROM organization WHERE status = ? ORDER BY name');
+$find->execute(array('verified'));
+$organizations = $find->fetchAll();
+
+$find = $pdo->prepare(
+    'SELECT m.*, o.name FROM membership_request m
+     JOIN organization o ON o.organization_id = m.organization_id
+     WHERE m.user_id = ? AND m.status = ?'
+);
+$find->execute(array($_SESSION['user_id'], 'pending'));
+$asked = $find->fetch();
+
+$my_organization = '';
+
+if ($me['organization_id'] != '') {
+    $find = $pdo->prepare('SELECT name FROM organization WHERE organization_id = ?');
+    $find->execute(array($me['organization_id']));
+    $my_organization = $find->fetchColumn();
+}
+
 $errors = array();
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['join'])) {
+
+    if ($_POST['join'] > 0 && $me['organization_id'] == '' && $asked == false) {
+        $save = $pdo->prepare(
+            'INSERT INTO membership_request (user_id, organization_id, designation) VALUES (?, ?, ?)'
+        );
+        $save->execute(array($_SESSION['user_id'], $_POST['join'], trim($_POST['position'])));
+    }
+
+    header('Location: profile-edit.php?asked=1');
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $me['full_name'] = trim($_POST['name']);
     $me['email'] = trim($_POST['email']);
     $me['phone'] = trim($_POST['phone']);
-    $me['organisation_name'] = trim($_POST['org']);
+    $me['organization_name'] = trim($_POST['org']);
     $me['bio'] = trim($_POST['bio']);
 
     if (isset($_POST['skills'])) {
@@ -44,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (count($errors) == 0) {
         $save = $pdo->prepare(
             'UPDATE `user`
-                SET full_name = ?, email = ?, phone = ?, organisation_name = ?, skills = ?, bio = ?
+                SET full_name = ?, email = ?, phone = ?, organization_name = ?, skills = ?, bio = ?
               WHERE user_id = ?'
         );
 
@@ -52,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $me['full_name'],
             $me['email'],
             $me['phone'],
-            $me['organisation_name'],
+            $me['organization_name'],
             $me['skills'],
             $me['bio'],
             $_SESSION['user_id']
@@ -139,14 +172,13 @@ include 'includes/app-header.php';
       </div>
 
       <div class="field">
-        <label class="field-label" for="org">Organisation / Affiliation</label>
-        <input class="input-v" type="text" id="org" name="org"
-               value="<?php echo htmlspecialchars($me['organisation_name']); ?>">
-        <?php if ($me['organisation_id'] != '') { ?>
-          <p style="margin-top:6px;font-size:12.5px;color:#98a2aa">
-            Your account is linked to a registered organisation, which is what the platform shows.
-          </p>
-        <?php } ?>
+        <label class="field-label" for="org">Where you work or study</label>
+        <input class="input-v" type="text" id="org" name="org" placeholder="e.g. TechCorp China"
+               value="<?php echo htmlspecialchars($me['organization_name']); ?>">
+        <p style="margin-top:6px;font-size:12.5px;color:#98a2aa">
+          Just a note on your profile. To be listed as part of an organization on the platform,
+          use the box below.
+        </p>
       </div>
 
       <div class="field mb-0">
@@ -182,6 +214,53 @@ include 'includes/app-header.php';
       </div>
     </div>
   </form>
+
+  <div class="card-v card-v-pad mb-4">
+    <p class="section-label">Organization on VPMS</p>
+
+    <?php if ($me['organization_id'] != '') { ?>
+      <p style="font-size:14px;color:#48545e">
+        You are listed as part of <strong><?php echo htmlspecialchars($my_organization); ?></strong><?php
+          if ($me['designation'] != '') { ?> &middot; <?php echo htmlspecialchars($me['designation']); ?><?php } ?>.
+      </p>
+      <p style="font-size:12.5px;color:#98a2aa">
+        Their coordinator manages this. Ask them to remove you if it is no longer right.
+      </p>
+
+    <?php } elseif ($asked != false) { ?>
+      <p style="font-size:14px;color:#48545e">
+        Waiting on <strong><?php echo htmlspecialchars($asked['name']); ?></strong> to approve your request.
+      </p>
+
+    <?php } else { ?>
+      <p style="font-size:13px;color:#6d7880">
+        Ask an organization to list you as one of their people. Their coordinator decides.
+      </p>
+
+      <form action="profile-edit.php" method="post">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-6">
+            <label class="field-label" for="join">Organization</label>
+            <select class="select-v" id="join" name="join">
+              <option value="0">Choose one</option>
+              <?php foreach ($organizations as $row) { ?>
+                <option value="<?php echo $row['organization_id']; ?>">
+                  <?php echo htmlspecialchars($row['name']); ?>
+                </option>
+              <?php } ?>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="field-label" for="position">Your position</label>
+            <input class="input-v" type="text" id="position" name="position" placeholder="e.g. Volunteer">
+          </div>
+          <div class="col-md-2">
+            <button class="btn-v btn-soft btn-block" type="submit">Ask</button>
+          </div>
+        </div>
+      </form>
+    <?php } ?>
+  </div>
 
 </div>
 

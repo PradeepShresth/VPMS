@@ -5,15 +5,15 @@ $active = 'partnerships';
 require 'includes/auth.php';
 require 'config/db.php';
 
-// a partnership is asked for by an organisation, so a volunteer has no business here
-if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 3 && $_SESSION['role_id'] != 6) {
+// a partnership is asked for by an organization, so a volunteer has no business here
+if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 6) {
     header('Location: partnerships.php');
     exit;
 }
 
 $partner_id = isset($_POST['partner_id']) ? $_POST['partner_id'] : 0;
 
-$find = $pdo->prepare('SELECT name FROM organisation WHERE organisation_id = ?');
+$find = $pdo->prepare('SELECT name FROM organization WHERE organization_id = ?');
 $find->execute(array($partner_id));
 $partner = $find->fetch();
 

@@ -15,8 +15,8 @@ $sql = 'SELECT p.*, asked.name AS asked_by, partner.name AS partner_name,
                   JOIN opportunity o ON o.opportunity_id = e.opportunity_id
                  WHERE o.partnership_id = p.partnership_id AND ev.attended = 1) AS hours
         FROM partnership p
-        LEFT JOIN organisation asked ON asked.organisation_id = p.organisation_id
-        LEFT JOIN organisation partner ON partner.organisation_id = p.partner_id
+        LEFT JOIN organization asked ON asked.organization_id = p.organization_id
+        LEFT JOIN organization partner ON partner.organization_id = p.partner_id
         WHERE 1 = 1';
 $values = array();
 
@@ -48,7 +48,7 @@ include 'includes/app-header.php';
     <h1 class="page-title">Partnerships</h1>
     <p class="page-sub"><?php echo $total; ?> total partnerships on the platform</p>
   </div>
-  <?php if ($_SESSION['role_id'] == 2 || $_SESSION['role_id'] == 3 || $_SESSION['role_id'] == 6) { ?>
+  <?php if ($_SESSION['role_id'] == 2 || $_SESSION['role_id'] == 6) { ?>
     <a class="btn-v btn-green" href="partnership-request.php">+ Request Partnership</a>
   <?php } ?>
 </div>

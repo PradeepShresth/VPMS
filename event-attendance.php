@@ -21,17 +21,39 @@ if ($event == false) {
     exit;
 }
 
-if ($event['created_by'] != $_SESSION['user_id'] && $_SESSION['role_id'] != 4 && $_SESSION['role_id'] != 6) {
+// this event is ours to run if we own it, or if we are partnered with whoever does
+$manages = false;
+
+if ($_SESSION['role_id'] == 6 || $event['created_by'] == $_SESSION['user_id']) {
+    $manages = true;
+} elseif (($_SESSION['role_id'] == 2 || $_SESSION['role_id'] == 4)
+       && $event['organization_id'] != '' && $_SESSION['organization_id'] != '') {
+
+    if ($event['organization_id'] == $_SESSION['organization_id']) {
+        $manages = true;
+    } else {
+        $together = $pdo->prepare(
+            'SELECT partnership_id FROM partnership
+              WHERE status = ?
+                AND ((organization_id = ? AND partner_id = ?)
+                  OR (organization_id = ? AND partner_id = ?))'
+        );
+        $together->execute(array('active',
+            $_SESSION['organization_id'], $event['organization_id'],
+            $event['organization_id'], $_SESSION['organization_id']));
+
+        if ($together->fetch() != false) {
+            $manages = true;
+        }
+    }
+}
+
+if (!$manages) {
     header('Location: event-details.php?id=' . $id);
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $hours = $_POST['hours'];
-
-    if ($hours < 0) {
-        $hours = 0;
-    }
 
     // start by clearing the whole roster, then mark the ones that were ticked
     $clear = $pdo->prepare('UPDATE event_volunteer SET attended = 0, hours_logged = 0 WHERE event_id = ?');
@@ -46,6 +68,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         );
 
         foreach ($_POST['present'] as $event_volunteer_id) {
+            // each volunteer has their own box, because half a day is not a full day
+            $hours = $_POST['hours'][$event_volunteer_id];
+
+            if ($hours < 0 || $hours == '') {
+                $hours = 0;
+            }
+
             $mark->execute(array($hours, $event_volunteer_id, $id));
             $marked = $marked + 1;
         }
@@ -55,14 +84,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     exit;
 }
 
+// the availability comes from what they ticked when they applied
 $list = $pdo->prepare(
-    'SELECT ev.event_volunteer_id, ev.attended, u.full_name
+    'SELECT ev.event_volunteer_id, ev.attended, ev.hours_logged, u.full_name,
+            (SELECT a.availability FROM application a
+              WHERE a.user_id = ev.user_id AND a.opportunity_id = ?) AS availability
      FROM event_volunteer ev
      JOIN `user` u ON u.user_id = ev.user_id
      WHERE ev.event_id = ? AND ev.status = ?
      ORDER BY u.full_name'
 );
-$list->execute(array($id, 'confirmed'));
+$list->execute(array($event['opportunity_id'], $id, 'confirmed'));
 $roster = $list->fetchAll();
 
 if ($event['hours_required'] > 0) {
@@ -103,20 +135,57 @@ include 'includes/app-header.php';
   <form action="event-attendance.php?id=<?php echo $id; ?>" method="post">
 
     <?php foreach ($roster as $person) { ?>
-      <label class="card-v card-v-pad d-flex align-items-center gap-3 w-100 mb-3 roster-row"
-             style="text-align:left;cursor:pointer">
-        <input type="checkbox" name="present[]" value="<?php echo $person['event_volunteer_id']; ?>"
-               style="display:none" <?php if ($person['attended'] == 1) echo 'checked'; ?>>
-        <span class="avatar-circle grey"><?php echo strtoupper(substr($person['full_name'], 0, 1)); ?></span>
-        <span style="font-size:14.5px;font-weight:500"><?php echo htmlspecialchars($person['full_name']); ?></span>
-        <span class="ms-auto tick" style="color:#16663e;font-size:18px"><i class="bi bi-check-circle-fill"></i></span>
-      </label>
+
+      <?php
+      // somebody who only signed up for half the day earns half the hours
+      if (strpos($person['availability'], 'Morning') !== false
+       || strpos($person['availability'], 'Afternoon') !== false) {
+          $their_hours = round($default_hours / 2);
+      } else {
+          $their_hours = $default_hours;
+      }
+
+      // once attendance has been recorded, show what was actually credited
+      if ($person['attended'] == 1) {
+          $their_hours = $person['hours_logged'];
+      }
+
+      if ($person['availability'] != '') {
+          $when = $person['availability'];
+      } else {
+          $when = 'No availability given';
+      }
+      ?>
+
+      <div class="card-v card-v-pad d-flex flex-wrap align-items-center gap-3 w-100 mb-3 roster-row">
+        <label class="d-flex align-items-center gap-3 flex-grow-1" style="cursor:pointer;margin:0">
+          <input type="checkbox" name="present[]" value="<?php echo $person['event_volunteer_id']; ?>"
+                 style="display:none" <?php if ($person['attended'] == 1) echo 'checked'; ?>>
+          <span class="avatar-circle grey"><?php echo strtoupper(substr($person['full_name'], 0, 1)); ?></span>
+          <span>
+            <span class="d-block" style="font-size:14.5px;font-weight:500">
+              <?php echo htmlspecialchars($person['full_name']); ?>
+            </span>
+            <span class="d-block" style="font-size:12.5px;color:#6d7880">
+              <?php echo htmlspecialchars($when); ?>
+            </span>
+          </span>
+          <span class="tick" style="color:#16663e;font-size:18px"><i class="bi bi-check-circle-fill"></i></span>
+        </label>
+
+        <span class="d-flex align-items-center gap-2">
+          <input class="input-v" type="number" style="width:82px"
+                 name="hours[<?php echo $person['event_volunteer_id']; ?>]"
+                 value="<?php echo $their_hours; ?>">
+          <span style="font-size:13px;color:#6d7880">hrs</span>
+        </span>
+      </div>
     <?php } ?>
 
-    <div class="field mb-4">
-      <label class="field-label" for="hours">Hours to credit each volunteer</label>
-      <input class="input-v" type="number" id="hours" name="hours" value="<?php echo $default_hours; ?>">
-    </div>
+    <p class="mb-4" style="font-size:13px;color:#6d7880">
+      Hours start from the <?php echo $default_hours; ?> this work is worth, halved for anyone who
+      only signed up for part of the day. Change any of them if somebody left early or stayed on.
+    </p>
 
     <button class="btn-v btn-green btn-block btn-lg-v" type="submit">
       Submit Attendance (<span id="count">0</span>/<?php echo count($roster); ?>)

@@ -6,7 +6,7 @@ require 'includes/auth.php';
 require 'config/db.php';
 
 // volunteers can join a discussion but not broadcast to the whole network
-if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 3 && $_SESSION['role_id'] != 6) {
+if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 6) {
     header('Location: messages.php');
     exit;
 }
@@ -79,11 +79,10 @@ include 'includes/app-header.php';
       <select class="select-v" id="audience" name="audience">
         <option <?php if ($audience == 'Everyone on the platform') echo 'selected'; ?>>Everyone on the platform</option>
         <option <?php if ($audience == 'Volunteers only') echo 'selected'; ?>>Volunteers only</option>
-        <option <?php if ($audience == 'NGO Coordinators') echo 'selected'; ?>>NGO Coordinators</option>
-        <option <?php if ($audience == 'Corporate CSR Managers') echo 'selected'; ?>>Corporate CSR Managers</option>
+        <option <?php if ($audience == 'Organization Coordinators') echo 'selected'; ?>>Organization Coordinators</option>
         <option <?php if ($audience == 'Community Field Officers') echo 'selected'; ?>>Community Field Officers</option>
         <option <?php if ($audience == 'Sponsors / Donors') echo 'selected'; ?>>Sponsors / Donors</option>
-        <option <?php if ($audience == 'Partner organisations') echo 'selected'; ?>>Partner organisations</option>
+        <option <?php if ($audience == 'Partner organizations') echo 'selected'; ?>>Partner organizations</option>
       </select>
     </div>
 

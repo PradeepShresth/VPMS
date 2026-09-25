@@ -5,7 +5,7 @@ $active = 'events';
 require 'includes/auth.php';
 require 'config/db.php';
 
-if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 3 && $_SESSION['role_id'] != 6) {
+if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 6) {
     header('Location: events.php');
     exit;
 }
@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         $save = $pdo->prepare(
-            'INSERT INTO event (title, opportunity_id, organisation_id, created_by, location,
+            'INSERT INTO event (title, opportunity_id, organization_id, created_by, location,
                                 event_date, event_time, volunteers_needed, category)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $save->execute(array(
             $title,
             $linked,
-            $_SESSION['organisation_id'],
+            $_SESSION['organization_id'],
             $_SESSION['user_id'],
             $location,
             $date,
@@ -124,12 +124,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
 
-            // closing recruitment you never had would just be a trap, so only
-            // close it once somebody has actually been accepted
-            if (count($taken) > 0) {
-                $close = $pdo->prepare('UPDATE opportunity SET status = ? WHERE opportunity_id = ?');
-                $close->execute(array('closed', $linked));
-            }
+            // the work is scheduled now, so it stops taking applications.
+            // Reopen on the opportunity page puts it back if that was too early.
+            $close = $pdo->prepare('UPDATE opportunity SET status = ? WHERE opportunity_id = ?');
+            $close->execute(array('closed', $linked));
         }
 
         header('Location: event-created.php?id=' . $event_id);
@@ -162,7 +160,8 @@ include 'includes/app-header.php';
         <?php if ($taken_count > 0) { ?>
           The accepted volunteers go on the roster and the opportunity stops taking applications.
         <?php } else { ?>
-          Nobody has been accepted yet, so the roster starts empty and the opportunity stays open.
+          Nobody has been accepted yet, so the roster starts empty. The opportunity still stops
+          taking applications &mdash; reopen it from its own page if you need more.
         <?php } ?>
       </p>
     </div>

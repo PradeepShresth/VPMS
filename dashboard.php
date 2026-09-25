@@ -13,12 +13,12 @@ $count = $pdo->prepare('SELECT COUNT(*) FROM `user` WHERE created_at >= ?');
 $count->execute(array(date('Y-m-01')));
 $joined_this_month = $count->fetchColumn();
 
-$count = $pdo->query('SELECT COUNT(*) FROM organisation');
-$organisations = $count->fetchColumn();
+$count = $pdo->query('SELECT COUNT(*) FROM organization');
+$organizations = $count->fetchColumn();
 
-$count = $pdo->prepare('SELECT COUNT(*) FROM organisation WHERE status = ?');
+$count = $pdo->prepare('SELECT COUNT(*) FROM organization WHERE status = ?');
 $count->execute(array('pending'));
-$organisations_waiting = $count->fetchColumn();
+$organizations_waiting = $count->fetchColumn();
 
 $count = $pdo->prepare('SELECT COUNT(*) FROM partnership WHERE status = ?');
 $count->execute(array('active'));
@@ -37,11 +37,11 @@ $categories = $count->fetchColumn();
 
 $find = $pdo->query(
     'SELECT o.opportunity_id, o.title, o.location, o.spots, o.status,
-            org.name AS organisation, u.organisation_name,
+            org.name AS organization, u.organization_name,
             (SELECT COUNT(*) FROM application a
               WHERE a.opportunity_id = o.opportunity_id AND a.status = \'accepted\') AS filled
      FROM opportunity o
-     LEFT JOIN organisation org ON org.organisation_id = o.organisation_id
+     LEFT JOIN organization org ON org.organization_id = o.organization_id
      LEFT JOIN `user` u ON u.user_id = o.created_by
      ORDER BY o.created_at DESC
      LIMIT 3'
@@ -63,8 +63,8 @@ $events = $find->fetchAll();
 $find = $pdo->prepare(
     'SELECT p.partnership_id, p.sdg_goals, asked.name AS asked_by, partner.name AS partner_name
      FROM partnership p
-     LEFT JOIN organisation asked ON asked.organisation_id = p.organisation_id
-     LEFT JOIN organisation partner ON partner.organisation_id = p.partner_id
+     LEFT JOIN organization asked ON asked.organization_id = p.organization_id
+     LEFT JOIN organization partner ON partner.organization_id = p.partner_id
      WHERE p.status = ?
      ORDER BY p.created_at DESC
      LIMIT 3'
@@ -130,9 +130,9 @@ include 'includes/app-header.php';
   </div>
   <div class="col-6 col-xl-3">
     <div class="stat-card">
-      <span class="stat-value"><?php echo $organisations; ?></span>
-      <span class="stat-label">Organisations</span>
-      <span class="stat-note"><?php echo $organisations_waiting; ?> pending verification</span>
+      <span class="stat-value"><?php echo $organizations; ?></span>
+      <span class="stat-label">Organizations</span>
+      <span class="stat-note"><?php echo $organizations_waiting; ?> pending verification</span>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -170,10 +170,10 @@ include 'includes/app-header.php';
       <?php foreach ($opportunities as $row) { ?>
 
         <?php
-        if ($row['organisation'] != '') {
-            $posted_by = $row['organisation'];
+        if ($row['organization'] != '') {
+            $posted_by = $row['organization'];
         } else {
-            $posted_by = $row['organisation_name'];
+            $posted_by = $row['organization_name'];
         }
         ?>
 
@@ -338,7 +338,7 @@ include 'includes/app-header.php';
     <div class="d-flex flex-wrap gap-2">
       <a class="btn-v btn-green" href="users.php">Manage Users</a>
       <a class="btn-v btn-soft" href="applications-review.php">Review Applications</a>
-      <a class="btn-v btn-soft" href="organisations.php">Approve Organisations</a>
+      <a class="btn-v btn-soft" href="organizations.php">Approve Organizations</a>
       <a class="btn-v btn-soft" href="report-generate.php">Generate Report</a>
     </div>
   </div>

@@ -10,6 +10,7 @@ $user_role = isset($_SESSION['role_name']) ? $_SESSION['role_name'] : 'System Ad
 
 // the Administration links below are only for the roles that can use them
 $my_role = isset($_SESSION['role_id']) ? $_SESSION['role_id'] : 0;
+$my_organization = isset($_SESSION['organization_id']) ? $_SESSION['organization_id'] : '';
 
 // first letter of the first two words, e.g. "Aruna Tamang" -> "AT"
 $name_parts = explode(' ', $user_name);
@@ -28,7 +29,7 @@ if (isset($name_parts[1])) {
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link href="assets/css/app.css?v=8" rel="stylesheet">
+  <link href="assets/css/app.css?v=9" rel="stylesheet">
 </head>
 <body>
 
@@ -58,9 +59,20 @@ if (isset($name_parts[1])) {
     <a class="side-link <?php if ($active == 'partnerships') echo 'active'; ?>" href="partnerships.php">
       <i class="bi bi-record-circle"></i> Partnerships
     </a>
-    <a class="side-link <?php if ($active == 'organisations') echo 'active'; ?>" href="organisations.php">
-      <i class="bi bi-book"></i> Organisations
+    <a class="side-link <?php if ($active == 'organizations') echo 'active'; ?>" href="organizations.php">
+      <i class="bi bi-book"></i> Organizations
     </a>
+    <?php if ($my_role == 5) { ?>
+      <a class="side-link <?php if ($active == 'sponsorships') echo 'active'; ?>" href="sponsorships.php">
+        <i class="bi bi-cash-coin"></i> My Sponsorships
+      </a>
+    <?php } ?>
+    <?php if ($my_organization != '') { ?>
+      <a class="side-link <?php if ($active == 'my-organization') echo 'active'; ?>"
+         href="organization-details.php?id=<?php echo $my_organization; ?>">
+        <i class="bi bi-building"></i> My Organization
+      </a>
+    <?php } ?>
     <a class="side-link <?php if ($active == 'messages') echo 'active'; ?>" href="messages.php">
       <i class="bi bi-chat-square-fill"></i> Messages
     </a>
@@ -71,7 +83,7 @@ if (isset($name_parts[1])) {
       <i class="bi bi-circle-half"></i> SDG 17 Impact
     </a>
 
-    <?php if ($my_role == 2 || $my_role == 3 || $my_role == 6) { ?>
+    <?php if ($my_role == 2 || $my_role == 6) { ?>
       <span class="side-heading">Administration</span>
 
       <a class="side-link <?php if ($active == 'applications') echo 'active'; ?>" href="applications-review.php">

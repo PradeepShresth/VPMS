@@ -11,8 +11,8 @@ if ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4) {
     exit;
 }
 
-$find = $pdo->query('SELECT organisation_id, name FROM organisation ORDER BY name');
-$organisations = $find->fetchAll();
+$find = $pdo->query('SELECT organization_id, name FROM organization ORDER BY name');
+$organizations = $find->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $type = $_POST['type'];
@@ -28,11 +28,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if ($_POST['org'] != '0') {
-        $find = $pdo->prepare('SELECT name FROM organisation WHERE organisation_id = ?');
+        $find = $pdo->prepare('SELECT name FROM organization WHERE organization_id = ?');
         $find->execute(array($_POST['org']));
         $title = $type . ' — ' . $find->fetchColumn();
     } else {
-        $title = $type . ' — All organisations';
+        $title = $type . ' — All organizations';
     }
 
     $save = $pdo->prepare(
@@ -84,11 +84,11 @@ include 'includes/app-header.php';
     </div>
 
     <div class="field">
-      <label class="field-label" for="org">Organisation</label>
+      <label class="field-label" for="org">Organization</label>
       <select class="select-v" id="org" name="org">
-        <option value="0">All organisations</option>
-        <?php foreach ($organisations as $row) { ?>
-          <option value="<?php echo $row['organisation_id']; ?>"><?php echo htmlspecialchars($row['name']); ?></option>
+        <option value="0">All organizations</option>
+        <?php foreach ($organizations as $row) { ?>
+          <option value="<?php echo $row['organization_id']; ?>"><?php echo htmlspecialchars($row['name']); ?></option>
         <?php } ?>
       </select>
     </div>

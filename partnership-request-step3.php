@@ -5,8 +5,8 @@ $active = 'partnerships';
 require 'includes/auth.php';
 require 'config/db.php';
 
-// a partnership is asked for by an organisation, so a volunteer has no business here
-if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 3 && $_SESSION['role_id'] != 6) {
+// a partnership is asked for by an organization, so a volunteer has no business here
+if ($_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 6) {
     header('Location: partnerships.php');
     exit;
 }
@@ -25,7 +25,7 @@ if (isset($_POST['sdg'])) {
     $sdg = '';
 }
 
-$find = $pdo->prepare('SELECT name FROM organisation WHERE organisation_id = ?');
+$find = $pdo->prepare('SELECT name FROM organization WHERE organization_id = ?');
 $find->execute(array($partner_id));
 $partner = $find->fetch();
 
@@ -36,13 +36,13 @@ if ($partner == false) {
 
 if (isset($_POST['objectives'])) {
     $save = $pdo->prepare(
-        'INSERT INTO partnership (organisation_id, partner_id, type, start_date, end_date,
+        'INSERT INTO partnership (organization_id, partner_id, type, start_date, end_date,
                                   sdg_goals, objectives, expected_impact, requested_by)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
 
     $save->execute(array(
-        $_SESSION['organisation_id'],
+        $_SESSION['organization_id'],
         $partner_id,
         $type,
         $start,

@@ -38,23 +38,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 $find = $pdo->prepare(
-    'SELECT u.full_name, u.email, u.phone, u.organisation_name, u.designation,
+    'SELECT u.full_name, u.email, u.phone, u.organization_name, u.designation,
             u.status, u.created_at, r.name AS role_name,
-            o.name AS organisation
+            o.name AS organization
      FROM `user` u
      JOIN role r ON r.role_id = u.role_id
-     LEFT JOIN organisation o ON o.organisation_id = u.organisation_id
+     LEFT JOIN organization o ON o.organization_id = u.organization_id
      WHERE u.user_id = ?'
 );
 $find->execute(array($_SESSION['user_id']));
 $me = $find->fetch();
 
-if ($me['organisation'] != '') {
-    $organisation = $me['organisation'];
-} elseif ($me['organisation_name'] != '') {
-    $organisation = $me['organisation_name'];
+if ($me['organization'] != '') {
+    $organization = $me['organization'];
+} elseif ($me['organization_name'] != '') {
+    $organization = $me['organization_name'];
 } else {
-    $organisation = '';
+    $organization = '';
 }
 
 $member_since = date('F Y', strtotime($me['created_at']));
@@ -73,12 +73,12 @@ $count = $pdo->prepare('SELECT COUNT(*) FROM application WHERE user_id = ? AND s
 $count->execute(array($_SESSION['user_id'], 'accepted'));
 $my_opportunities = $count->fetchColumn();
 
-if ($_SESSION['organisation_id'] != '') {
+if ($_SESSION['organization_id'] != '') {
     $count = $pdo->prepare(
         'SELECT COUNT(*) FROM partnership
-          WHERE requested_by = ? OR organisation_id = ? OR partner_id = ?'
+          WHERE requested_by = ? OR organization_id = ? OR partner_id = ?'
     );
-    $count->execute(array($_SESSION['user_id'], $_SESSION['organisation_id'], $_SESSION['organisation_id']));
+    $count->execute(array($_SESSION['user_id'], $_SESSION['organization_id'], $_SESSION['organization_id']));
 } else {
     $count = $pdo->prepare('SELECT COUNT(*) FROM partnership WHERE requested_by = ?');
     $count->execute(array($_SESSION['user_id']));
@@ -95,7 +95,13 @@ include 'includes/app-header.php';
   <div class="banner"><i class="bi bi-check-circle-fill"></i>Password updated.</div>
 <?php } ?>
 
-<h1 class="page-title mb-4">My Profile</h1>
+<div class="head-row">
+  <div class="flex-grow-1">
+    <h1 class="page-title">My Profile</h1>
+    <p class="page-sub">Your details, activity and password</p>
+  </div>
+  <a class="btn-v btn-green" href="profile-edit.php">Edit Profile</a>
+</div>
 
 <div class="card-v card-v-pad mb-4">
   <h2 style="font-family:'Fraunces',serif;font-size:25px;font-weight:400;margin-bottom:8px">
@@ -143,8 +149,20 @@ include 'includes/app-header.php';
       <?php } ?>
 
       <div class="field mb-0">
-        <label class="field-label" for="org">Organisation / Affiliation</label>
-        <input class="input-v" type="text" id="org" value="<?php echo htmlspecialchars($organisation); ?>" readonly>
+        <label class="field-label" for="org">Organization</label>
+        <?php if ($me['organization'] != '') { ?>
+          <p style="font-size:14.5px">
+            <a class="link-green" href="organization-details.php?id=<?php echo $_SESSION['organization_id']; ?>">
+              <?php echo htmlspecialchars($me['organization']); ?>
+            </a>
+            <?php if ($me['designation'] != '') { ?>
+              <span style="color:#6d7880"> &middot; <?php echo htmlspecialchars($me['designation']); ?></span>
+            <?php } ?>
+          </p>
+        <?php } else { ?>
+          <input class="input-v" type="text" id="org" value="<?php echo htmlspecialchars($organization); ?>" readonly>
+          <p style="margin-top:6px;font-size:12.5px;color:#98a2aa">Not linked to an organization on VPMS.</p>
+        <?php } ?>
       </div>
     </div>
   </div>
@@ -164,7 +182,7 @@ include 'includes/app-header.php';
       <div class="d-flex align-items-center gap-3 mb-3" style="padding:15px 18px;border-radius:8px;background:#eef4fa">
         <span class="flex-grow-1">
           <span class="d-block" style="font-size:14px;font-weight:600">Events Attended</span>
-          <span class="d-block" style="font-size:12.5px;color:#6d7880">Across all organisations</span>
+          <span class="d-block" style="font-size:12.5px;color:#6d7880">Across all organizations</span>
         </span>
         <span style="font-family:'Fraunces',serif;font-size:23px;color:#16663e"><?php echo $my_events; ?></span>
       </div>

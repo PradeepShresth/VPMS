@@ -16,18 +16,41 @@ if ($opportunity == false) {
     exit;
 }
 
-if ($opportunity['created_by'] != $_SESSION['user_id'] && $_SESSION['role_id'] != 6) {
+$mine = ($opportunity['organization_id'] != ''
+      && $opportunity['organization_id'] == $_SESSION['organization_id']
+      && $_SESSION['role_id'] == 2);
+
+// a coordinator of an organization partnered with the one behind this work
+// manages it too, because a partnership is joint work
+if (!$mine && $_SESSION['role_id'] == 2 && $opportunity['organization_id'] != ''
+ && $_SESSION['organization_id'] != '') {
+    $together = $pdo->prepare(
+        'SELECT partnership_id FROM partnership
+          WHERE status = ?
+            AND ((organization_id = ? AND partner_id = ?)
+              OR (organization_id = ? AND partner_id = ?))'
+    );
+    $together->execute(array('active',
+        $_SESSION['organization_id'], $opportunity['organization_id'],
+        $opportunity['organization_id'], $_SESSION['organization_id']));
+
+    if ($together->fetch() != false) {
+        $mine = true;
+    }
+}
+
+if ($opportunity['created_by'] != $_SESSION['user_id'] && !$mine && $_SESSION['role_id'] != 6) {
     header('Location: opportunity-details.php?id=' . $id);
     exit;
 }
 
-// active agreements this organisation is part of
+// active agreements this organization is part of
 if ($_SESSION['role_id'] == 6) {
     $find = $pdo->prepare(
         'SELECT p.partnership_id, a.name AS asked_by, b.name AS partner_name
          FROM partnership p
-         LEFT JOIN organisation a ON a.organisation_id = p.organisation_id
-         LEFT JOIN organisation b ON b.organisation_id = p.partner_id
+         LEFT JOIN organization a ON a.organization_id = p.organization_id
+         LEFT JOIN organization b ON b.organization_id = p.partner_id
          WHERE p.status = ?
          ORDER BY a.name'
     );
@@ -36,32 +59,17 @@ if ($_SESSION['role_id'] == 6) {
     $find = $pdo->prepare(
         'SELECT p.partnership_id, a.name AS asked_by, b.name AS partner_name
          FROM partnership p
-         LEFT JOIN organisation a ON a.organisation_id = p.organisation_id
-         LEFT JOIN organisation b ON b.organisation_id = p.partner_id
-         WHERE p.status = ? AND (p.organisation_id = ? OR p.partner_id = ?)
+         LEFT JOIN organization a ON a.organization_id = p.organization_id
+         LEFT JOIN organization b ON b.organization_id = p.partner_id
+         WHERE p.status = ? AND (p.organization_id = ? OR p.partner_id = ?)
          ORDER BY a.name'
     );
-    $find->execute(array('active', $_SESSION['organisation_id'], $_SESSION['organisation_id']));
+    $find->execute(array('active', $_SESSION['organization_id'], $_SESSION['organization_id']));
 }
 
 $partnerships = $find->fetchAll();
 
 $errors = array();
-
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete'])) {
-    // the events and applications have to let go of it first or the foreign keys complain
-    $clear = $pdo->prepare('UPDATE event SET opportunity_id = NULL WHERE opportunity_id = ?');
-    $clear->execute(array($id));
-
-    $clear = $pdo->prepare('DELETE FROM application WHERE opportunity_id = ?');
-    $clear->execute(array($id));
-
-    $remove = $pdo->prepare('DELETE FROM opportunity WHERE opportunity_id = ?');
-    $remove->execute(array($id));
-
-    header('Location: opportunities.php?deleted=1');
-    exit;
-}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $opportunity['title'] = trim($_POST['title']);
@@ -149,6 +157,10 @@ include 'includes/app-header.php';
   </a>
 
   <h1 class="page-title mb-4">Edit Opportunity</h1>
+
+  <?php if (isset($_GET['copied'])) { ?>
+    <div class="banner"><i class="bi bi-check-circle-fill"></i>Copy made. Give it a new date and save.</div>
+  <?php } ?>
 
   <?php if (count($errors) > 0) { ?>
     <div class="notice mb-4" style="border-left-color:#c8504b;background:#fdf3f2">
@@ -278,11 +290,6 @@ include 'includes/app-header.php';
     <button class="btn-v btn-green btn-block btn-lg-v" type="submit">Save Changes</button>
   </form>
 
-  <form class="mt-3" action="opportunity-edit.php?id=<?php echo $id; ?>" method="post"
-        onsubmit="return confirm('Delete this opportunity and all of its applications?')">
-    <input type="hidden" name="delete" value="1">
-    <button class="btn-v btn-outline btn-block" type="submit">Delete Opportunity</button>
-  </form>
 
 </div>
 

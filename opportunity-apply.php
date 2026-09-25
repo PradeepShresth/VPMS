@@ -5,18 +5,12 @@ $active = 'opportunities';
 require 'includes/auth.php';
 require 'config/db.php';
 
-// applying is what the Volunteer role is for
-if ($_SESSION['role_id'] != 1) {
-    header('Location: opportunities.php');
-    exit;
-}
-
 $id = isset($_GET['id']) ? $_GET['id'] : 0;
 
 $find = $pdo->prepare(
-    'SELECT o.*, org.name AS organisation, u.organisation_name
+    'SELECT o.*, org.name AS organization, u.organization_name
      FROM opportunity o
-     LEFT JOIN organisation org ON org.organisation_id = o.organisation_id
+     LEFT JOIN organization org ON org.organization_id = o.organization_id
      LEFT JOIN `user` u ON u.user_id = o.created_by
      WHERE o.opportunity_id = ?'
 );
@@ -25,6 +19,42 @@ $opportunity = $find->fetch();
 
 if ($opportunity == false) {
     header('Location: opportunities.php');
+    exit;
+}
+
+// a volunteer account can apply to anything; everybody else can apply to work
+// their own organization is not behind, because they would be managing it instead
+$can_apply = true;
+
+// nobody volunteers for work they posted themselves
+if ($opportunity['created_by'] == $_SESSION['user_id']) {
+    $can_apply = false;
+}
+
+if ($_SESSION['role_id'] != 1 && $_SESSION['organization_id'] != ''
+ && $opportunity['organization_id'] != '') {
+
+    if ($opportunity['organization_id'] == $_SESSION['organization_id']) {
+        $can_apply = false;
+    } else {
+        $together = $pdo->prepare(
+            'SELECT partnership_id FROM partnership
+              WHERE status = ?
+                AND ((organization_id = ? AND partner_id = ?)
+                  OR (organization_id = ? AND partner_id = ?))'
+        );
+        $together->execute(array('active',
+            $_SESSION['organization_id'], $opportunity['organization_id'],
+            $opportunity['organization_id'], $_SESSION['organization_id']));
+
+        if ($together->fetch() != false) {
+            $can_apply = false;
+        }
+    }
+}
+
+if (!$can_apply) {
+    header('Location: opportunity-details.php?id=' . $id);
     exit;
 }
 
@@ -73,10 +103,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-if ($opportunity['organisation'] != '') {
-    $posted_by = $opportunity['organisation'];
+if ($opportunity['organization'] != '') {
+    $posted_by = $opportunity['organization'];
 } else {
-    $posted_by = $opportunity['organisation_name'];
+    $posted_by = $opportunity['organization_name'];
 }
 
 include 'includes/app-header.php';
